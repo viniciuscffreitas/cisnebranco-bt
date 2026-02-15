@@ -8,7 +8,7 @@ import com.cisnebranco.dto.response.InspectionPhotoResponse;
 import com.cisnebranco.dto.response.TechnicalOsGroomerViewResponse;
 import com.cisnebranco.dto.response.TechnicalOsResponse;
 import com.cisnebranco.entity.enums.UserRole;
-import com.cisnebranco.exception.ResourceNotFoundException;
+import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.HealthChecklistService;
 import com.cisnebranco.service.InspectionPhotoService;
@@ -56,6 +56,7 @@ public class TechnicalOsController {
     @GetMapping
     public ResponseEntity<?> findAll(@AuthenticationPrincipal UserPrincipal principal) {
         if (principal.getRole() == UserRole.GROOMER) {
+            requireGroomerProfile(principal);
             List<TechnicalOsGroomerViewResponse> result = osService.findByGroomer(principal.getGroomerId());
             return ResponseEntity.ok(result);
         }
@@ -66,11 +67,8 @@ public class TechnicalOsController {
     public ResponseEntity<?> findById(@PathVariable Long id,
                                        @AuthenticationPrincipal UserPrincipal principal) {
         if (principal.getRole() == UserRole.GROOMER) {
-            List<TechnicalOsGroomerViewResponse> groomerOs = osService.findByGroomer(principal.getGroomerId());
-            return ResponseEntity.ok(groomerOs.stream()
-                    .filter(os -> os.id().equals(id))
-                    .findFirst()
-                    .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", id)));
+            requireGroomerProfile(principal);
+            return ResponseEntity.ok(osService.findByIdForGroomer(id, principal.getGroomerId()));
         }
         return ResponseEntity.ok(osService.findById(id));
     }
@@ -106,5 +104,11 @@ public class TechnicalOsController {
     @GetMapping("/{id}/checklist")
     public ResponseEntity<HealthChecklistResponse> getChecklist(@PathVariable Long id) {
         return ResponseEntity.ok(checklistService.findByOs(id));
+    }
+
+    private void requireGroomerProfile(UserPrincipal principal) {
+        if (principal.getGroomerId() == null) {
+            throw new BusinessException("User account is not linked to a groomer profile. Contact an administrator.");
+        }
     }
 }

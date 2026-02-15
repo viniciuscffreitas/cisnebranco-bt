@@ -3,6 +3,7 @@ package com.cisnebranco.controller;
 import com.cisnebranco.dto.request.CommissionGenerateRequest;
 import com.cisnebranco.dto.response.WeeklyCommissionResponse;
 import com.cisnebranco.entity.enums.UserRole;
+import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.WeeklyCommissionService;
 import jakarta.validation.Valid;
@@ -31,6 +32,9 @@ public class WeeklyCommissionController {
     public ResponseEntity<List<WeeklyCommissionResponse>> findAll(
             @AuthenticationPrincipal UserPrincipal principal) {
         if (principal.getRole() == UserRole.GROOMER) {
+            if (principal.getGroomerId() == null) {
+                throw new BusinessException("User account is not linked to a groomer profile. Contact an administrator.");
+            }
             return ResponseEntity.ok(commissionService.findByGroomer(principal.getGroomerId()));
         }
         return ResponseEntity.ok(commissionService.findAll());

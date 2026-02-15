@@ -6,12 +6,14 @@ import com.cisnebranco.dto.response.AuthResponse;
 import com.cisnebranco.entity.AppUser;
 import com.cisnebranco.entity.RefreshToken;
 import com.cisnebranco.exception.BusinessException;
+import com.cisnebranco.exception.UnauthorizedException;
 import com.cisnebranco.repository.AppUserRepository;
 import com.cisnebranco.repository.RefreshTokenRepository;
 import com.cisnebranco.security.CustomUserDetailsService;
 import com.cisnebranco.security.JwtTokenProvider;
 import com.cisnebranco.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,6 +26,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final AuthenticationManager authenticationManager;
@@ -50,11 +53,11 @@ public class AuthService {
     @Transactional
     public AuthResponse refresh(RefreshTokenRequest request) {
         RefreshToken stored = refreshTokenRepository.findByToken(request.refreshToken())
-                .orElseThrow(() -> new BusinessException("Invalid refresh token"));
+                .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
         if (stored.isExpired()) {
             refreshTokenRepository.delete(stored);
-            throw new BusinessException("Refresh token expired");
+            throw new UnauthorizedException("Refresh token expired");
         }
 
         refreshTokenRepository.delete(stored);
@@ -70,10 +73,19 @@ public class AuthService {
     @Transactional
     public void logout(String refreshToken) {
         refreshTokenRepository.findByToken(refreshToken)
-                .ifPresent(token -> refreshTokenRepository.deleteByUserId(token.getUser().getId()));
+                .ifPresentOrElse(
+                        token -> {
+                            Long userId = token.getUser().getId();
+                            refreshTokenRepository.deleteByUserId(userId);
+                            log.info("User {} logged out, all refresh tokens revoked", userId);
+                        },
+                        () -> log.warn("Logout attempted with unknown refresh token")
+                );
     }
 
     private String createRefreshToken(Long userId) {
+        refreshTokenRepository.deleteExpired(LocalDateTime.now());
+
         AppUser user = appUserRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException("User not found"));
 

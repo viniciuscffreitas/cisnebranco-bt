@@ -21,34 +21,23 @@ public class JwtTokenProvider {
 
     private final SecretKey key;
     private final long accessTokenExpirationMs;
-    private final long refreshTokenExpirationMs;
 
     public JwtTokenProvider(
             @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.access-token-expiration-ms}") long accessTokenExpirationMs,
-            @Value("${app.jwt.refresh-token-expiration-ms}") long refreshTokenExpirationMs) {
+            @Value("${app.jwt.access-token-expiration-ms}") long accessTokenExpirationMs) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenExpirationMs = accessTokenExpirationMs;
-        this.refreshTokenExpirationMs = refreshTokenExpirationMs;
     }
 
     public String generateAccessToken(UserPrincipal principal) {
-        return buildToken(principal, accessTokenExpirationMs, "access");
-    }
-
-    public String generateRefreshToken(UserPrincipal principal) {
-        return buildToken(principal, refreshTokenExpirationMs, "refresh");
-    }
-
-    private String buildToken(UserPrincipal principal, long expirationMs, String type) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(principal.getUsername())
                 .claim("role", principal.getRole().name())
                 .claim("groomerId", principal.getGroomerId())
-                .claim("type", type)
+                .claim("type", "access")
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() + expirationMs))
+                .expiration(new Date(now.getTime() + accessTokenExpirationMs))
                 .signWith(key)
                 .compact();
     }

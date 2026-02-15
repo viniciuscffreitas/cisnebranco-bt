@@ -25,6 +25,7 @@ import com.cisnebranco.repository.TechnicalOsRepository;
 import com.cisnebranco.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -157,17 +158,27 @@ public class TechnicalOsService {
     }
 
     @Transactional(readOnly = true)
+    public TechnicalOsGroomerViewResponse findByIdForGroomer(Long id, Long groomerId) {
+        TechnicalOs os = findEntityById(id);
+        if (os.getGroomer() == null || !os.getGroomer().getId().equals(groomerId)) {
+            throw new AccessDeniedException("Groomer can only view their own service orders");
+        }
+        return osMapper.toGroomerViewResponse(os);
+    }
+
+    @Transactional(readOnly = true)
     public List<TechnicalOsGroomerViewResponse> findByGroomer(Long groomerId) {
         return osRepository.findByGroomerIdWithDetails(groomerId).stream()
                 .map(osMapper::toGroomerViewResponse)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public void enforceAccess(Long osId, UserPrincipal principal) {
         if (principal.getRole() == UserRole.GROOMER) {
             TechnicalOs os = findEntityById(osId);
             if (os.getGroomer() == null || !os.getGroomer().getId().equals(principal.getGroomerId())) {
-                throw new BusinessException("Groomer can only manage their own service orders");
+                throw new AccessDeniedException("Groomer can only manage their own service orders");
             }
         }
     }

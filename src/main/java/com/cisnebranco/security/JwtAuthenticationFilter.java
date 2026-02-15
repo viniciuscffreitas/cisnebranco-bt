@@ -43,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
-            log.error("Failed to process JWT authentication: {}", e.getMessage());
+            log.error("Failed to process JWT authentication", e);
         }
 
         filterChain.doFilter(request, response);

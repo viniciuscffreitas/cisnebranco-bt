@@ -31,10 +31,10 @@ springdoc:
 
 app:
   cors:
-    allowed-origins: ${CORS_ORIGINS:*}
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:8080}
   jwt:
     secret: ${JWT_SECRET:cisne-branco-dev-secret-key-min-256-bits-long-enough-for-hs256}
-    access-token-expiration-ms: 86400000   # 24h
+    access-token-expiration-ms: 3600000    # 1h
     refresh-token-expiration-ms: 604800000 # 7d
   upload:
     photo-dir: ${UPLOAD_DIR:./uploads/photos}
