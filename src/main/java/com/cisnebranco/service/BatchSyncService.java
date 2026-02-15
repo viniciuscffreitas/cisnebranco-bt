@@ -5,6 +5,8 @@ import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.response.BatchSyncResponse;
 import com.cisnebranco.dto.response.BatchSyncResponse.BatchItemResult;
 import com.cisnebranco.dto.response.TechnicalOsResponse;
+import com.cisnebranco.exception.BusinessException;
+import com.cisnebranco.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,9 +31,12 @@ public class BatchSyncService {
                 try {
                     TechnicalOsResponse os = osService.checkIn(checkIn);
                     checkInResults.add(BatchItemResult.ok(i, os.id()));
-                } catch (Exception e) {
+                } catch (ResourceNotFoundException | BusinessException e) {
                     log.warn("Batch check-in failed at index {}: {}", i, e.getMessage());
                     checkInResults.add(BatchItemResult.fail(i, e.getMessage()));
+                } catch (Exception e) {
+                    log.error("Unexpected error in batch check-in at index {}", i, e);
+                    checkInResults.add(BatchItemResult.fail(i, "Internal error"));
                 }
             }
         }
@@ -42,9 +47,12 @@ public class BatchSyncService {
                 try {
                     TechnicalOsResponse os = osService.updateStatus(update.osId(), update.statusUpdate());
                     statusResults.add(BatchItemResult.ok(i, os.id()));
-                } catch (Exception e) {
+                } catch (ResourceNotFoundException | BusinessException e) {
                     log.warn("Batch status update failed at index {}: {}", i, e.getMessage());
                     statusResults.add(BatchItemResult.fail(i, e.getMessage()));
+                } catch (Exception e) {
+                    log.error("Unexpected error in batch status update at index {}", i, e);
+                    statusResults.add(BatchItemResult.fail(i, "Internal error"));
                 }
             }
         }

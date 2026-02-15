@@ -18,11 +18,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class InspectionPhotoService {
+
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp"
+    );
 
     private final InspectionPhotoRepository photoRepository;
     private final TechnicalOsRepository osRepository;
@@ -35,19 +40,33 @@ public class InspectionPhotoService {
         TechnicalOs os = osRepository.findById(osId)
                 .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
 
-        String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        Path dir = Paths.get(photoDir, String.valueOf(osId));
+        if (file.getContentType() == null || !ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
+            throw new BusinessException("Invalid file type. Allowed: JPEG, PNG, WebP");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String safeName = (originalFilename != null)
+                ? Paths.get(originalFilename).getFileName().toString()
+                : "upload";
+        String filename = UUID.randomUUID() + "_" + safeName;
+
+        Path dir = Paths.get(photoDir, String.valueOf(osId)).toAbsolutePath().normalize();
+        Path targetFile = dir.resolve(filename).normalize();
+
+        if (!targetFile.startsWith(dir)) {
+            throw new BusinessException("Invalid file path");
+        }
 
         try {
             Files.createDirectories(dir);
-            Files.copy(file.getInputStream(), dir.resolve(filename));
+            Files.copy(file.getInputStream(), targetFile);
         } catch (IOException e) {
-            throw new BusinessException("Failed to save photo: " + e.getMessage());
+            throw new BusinessException("Failed to save photo", e);
         }
 
         InspectionPhoto photo = new InspectionPhoto();
         photo.setTechnicalOs(os);
-        photo.setFilePath(dir.resolve(filename).toString());
+        photo.setFilePath(targetFile.toString());
         photo.setCaption(caption);
 
         InspectionPhoto saved = photoRepository.save(photo);

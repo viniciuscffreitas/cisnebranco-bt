@@ -3,6 +3,7 @@ package com.cisnebranco.controller;
 import com.cisnebranco.dto.request.BatchSyncRequest;
 import com.cisnebranco.dto.response.BatchSyncResponse;
 import com.cisnebranco.service.BatchSyncService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,7 +19,7 @@ public class BatchSyncController {
     private final BatchSyncService batchSyncService;
 
     @PostMapping("/batch")
-    public ResponseEntity<BatchSyncResponse> sync(@RequestBody BatchSyncRequest request) {
+    public ResponseEntity<BatchSyncResponse> sync(@Valid @RequestBody BatchSyncRequest request) {
         return ResponseEntity.ok(batchSyncService.processBatch(request));
     }
 }

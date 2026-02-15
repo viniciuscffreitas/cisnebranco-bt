@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -35,7 +34,7 @@ public class WeeklyCommissionService {
 
         LocalDate weekEnd = weekStart.plusDays(6);
         LocalDateTime start = weekStart.atStartOfDay();
-        LocalDateTime end = weekEnd.atTime(LocalTime.MAX);
+        LocalDateTime end = weekStart.plusDays(7).atStartOfDay();
 
         List<TechnicalOs> deliveredOs = osRepository
                 .findDeliveredByGroomerAndDateRange(groomerId, start, end);

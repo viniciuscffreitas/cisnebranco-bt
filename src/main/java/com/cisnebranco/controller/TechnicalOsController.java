@@ -8,6 +8,7 @@ import com.cisnebranco.dto.response.InspectionPhotoResponse;
 import com.cisnebranco.dto.response.TechnicalOsGroomerViewResponse;
 import com.cisnebranco.dto.response.TechnicalOsResponse;
 import com.cisnebranco.entity.enums.UserRole;
+import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.HealthChecklistService;
 import com.cisnebranco.service.InspectionPhotoService;
@@ -39,7 +40,9 @@ public class TechnicalOsController {
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<TechnicalOsResponse> updateStatus(@PathVariable Long id,
-                                                             @Valid @RequestBody OsStatusUpdateRequest request) {
+                                                             @Valid @RequestBody OsStatusUpdateRequest request,
+                                                             @AuthenticationPrincipal UserPrincipal principal) {
+        osService.enforceAccess(id, principal);
         return ResponseEntity.ok(osService.updateStatus(id, request));
     }
 
@@ -67,7 +70,7 @@ public class TechnicalOsController {
             return ResponseEntity.ok(groomerOs.stream()
                     .filter(os -> os.id().equals(id))
                     .findFirst()
-                    .orElseThrow());
+                    .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", id)));
         }
         return ResponseEntity.ok(osService.findById(id));
     }
@@ -78,7 +81,9 @@ public class TechnicalOsController {
     public ResponseEntity<InspectionPhotoResponse> uploadPhoto(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "caption", required = false) String caption) {
+            @RequestParam(value = "caption", required = false) String caption,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        osService.enforceAccess(id, principal);
         return ResponseEntity.status(HttpStatus.CREATED).body(photoService.upload(id, file, caption));
     }
 
@@ -92,7 +97,9 @@ public class TechnicalOsController {
     @PostMapping("/{id}/checklist")
     public ResponseEntity<HealthChecklistResponse> saveChecklist(
             @PathVariable Long id,
-            @Valid @RequestBody HealthChecklistRequest request) {
+            @Valid @RequestBody HealthChecklistRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        osService.enforceAccess(id, principal);
         return ResponseEntity.ok(checklistService.createOrUpdate(id, request));
     }
 

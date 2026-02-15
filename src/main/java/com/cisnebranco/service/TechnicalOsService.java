@@ -11,6 +11,7 @@ import com.cisnebranco.entity.PricingMatrix;
 import com.cisnebranco.entity.ServiceType;
 import com.cisnebranco.entity.TechnicalOs;
 import com.cisnebranco.entity.enums.OsStatus;
+import com.cisnebranco.entity.enums.UserRole;
 import com.cisnebranco.event.OsReadyEvent;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
@@ -21,6 +22,7 @@ import com.cisnebranco.repository.PetRepository;
 import com.cisnebranco.repository.PricingMatrixRepository;
 import com.cisnebranco.repository.ServiceTypeRepository;
 import com.cisnebranco.repository.TechnicalOsRepository;
+import com.cisnebranco.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -59,6 +61,7 @@ public class TechnicalOsService {
 
         TechnicalOs os = new TechnicalOs();
         os.setPet(pet);
+        os.setStatus(OsStatus.WAITING);
         os.setNotes(request.notes());
 
         if (request.groomerId() != null) {
@@ -143,7 +146,7 @@ public class TechnicalOsService {
 
     @Transactional(readOnly = true)
     public List<TechnicalOsResponse> findAll() {
-        return osRepository.findAll().stream()
+        return osRepository.findAllWithDetails().stream()
                 .map(osMapper::toResponse)
                 .toList();
     }
@@ -155,9 +158,18 @@ public class TechnicalOsService {
 
     @Transactional(readOnly = true)
     public List<TechnicalOsGroomerViewResponse> findByGroomer(Long groomerId) {
-        return osRepository.findByGroomerId(groomerId).stream()
+        return osRepository.findByGroomerIdWithDetails(groomerId).stream()
                 .map(osMapper::toGroomerViewResponse)
                 .toList();
+    }
+
+    public void enforceAccess(Long osId, UserPrincipal principal) {
+        if (principal.getRole() == UserRole.GROOMER) {
+            TechnicalOs os = findEntityById(osId);
+            if (os.getGroomer() == null || !os.getGroomer().getId().equals(principal.getGroomerId())) {
+                throw new BusinessException("Groomer can only manage their own service orders");
+            }
+        }
     }
 
     private void validateReadyRequirements(TechnicalOs os) {

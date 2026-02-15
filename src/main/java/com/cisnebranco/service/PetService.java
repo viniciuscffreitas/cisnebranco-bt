@@ -79,6 +79,12 @@ public class PetService {
         pet.setSize(request.size());
         pet.setNotes(request.notes());
 
+        if (!pet.getClient().getId().equals(request.clientId())) {
+            Client newClient = clientRepository.findById(request.clientId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Client", request.clientId()));
+            pet.setClient(newClient);
+        }
+
         if (request.breedId() != null) {
             Breed breed = breedRepository.findById(request.breedId())
                     .orElseThrow(() -> new ResourceNotFoundException("Breed", request.breedId()));
