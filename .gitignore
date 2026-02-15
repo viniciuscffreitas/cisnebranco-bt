@@ -1,0 +1,24 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IDE ###
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Uploads ###
+uploads/
+
+### Env ###
+.env
