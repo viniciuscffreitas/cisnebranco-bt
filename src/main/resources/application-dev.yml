@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/cisnebranco
+    username: ${DB_USER:vini}
+    password: ${DB_PASS:}
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.cisnebranco: DEBUG
+    org.springframework.security: DEBUG
