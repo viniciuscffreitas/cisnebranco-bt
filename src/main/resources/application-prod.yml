@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    hikari:
+      maximum-pool-size: 20
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.cisnebranco: INFO
+    org.springframework.security: WARN

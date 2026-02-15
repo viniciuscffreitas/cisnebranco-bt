@@ -1,0 +1,19 @@
+package com.cisnebranco.mapper;
+
+import com.cisnebranco.dto.response.PetGroomerViewResponse;
+import com.cisnebranco.dto.response.PetResponse;
+import com.cisnebranco.entity.Pet;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+@Mapper(componentModel = "spring")
+public interface PetMapper {
+
+    @Mapping(source = "breed.id", target = "breedId")
+    @Mapping(source = "breed.name", target = "breedName")
+    @Mapping(source = "client.id", target = "clientId")
+    PetResponse toResponse(Pet pet);
+
+    @Mapping(source = "breed.name", target = "breedName")
+    PetGroomerViewResponse toGroomerViewResponse(Pet pet);
+}
