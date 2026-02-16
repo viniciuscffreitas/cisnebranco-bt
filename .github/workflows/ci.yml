@@ -10,21 +10,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: cisnebranco_test
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U test -d cisnebranco_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -38,7 +23,3 @@ jobs:
         run: mvn verify -B
         env:
           SPRING_PROFILES_ACTIVE: test
-          DATABASE_URL: jdbc:postgresql://localhost:5432/cisnebranco_test
-          DB_USER: test
-          DB_PASS: test
-          JWT_SECRET: ci-test-secret-key-min-256-bits-long-enough-for-hs256
