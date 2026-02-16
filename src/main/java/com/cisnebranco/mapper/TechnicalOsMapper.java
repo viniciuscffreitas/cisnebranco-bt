@@ -8,7 +8,7 @@ import com.cisnebranco.entity.TechnicalOs;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring", uses = {PetMapper.class, GroomerMapper.class, HealthChecklistMapper.class})
+@Mapper(componentModel = "spring", uses = {PetMapper.class, GroomerMapper.class, HealthChecklistMapper.class, PaymentEventMapper.class})
 public interface TechnicalOsMapper {
 
     TechnicalOsResponse toResponse(TechnicalOs os);

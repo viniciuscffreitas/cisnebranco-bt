@@ -10,5 +10,6 @@ import java.math.BigDecimal;
 public record ServiceTypeRequest(
         @NotBlank String code,
         @NotBlank String name,
-        @NotNull @Positive @DecimalMax("1.00") BigDecimal commissionRate
+        @NotNull @Positive @DecimalMax("1.00") BigDecimal commissionRate,
+        @Positive Integer defaultDurationMinutes
 ) {}

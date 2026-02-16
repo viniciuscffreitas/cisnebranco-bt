@@ -1,5 +1,6 @@
 package com.cisnebranco.controller;
 
+import com.cisnebranco.dto.request.ClientFilterRequest;
 import com.cisnebranco.dto.request.ClientRequest;
 import com.cisnebranco.dto.response.ClientResponse;
 import com.cisnebranco.service.ClientService;
@@ -25,9 +26,15 @@ public class ClientController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<Page<ClientResponse>> search(@RequestParam String name,
+    public ResponseEntity<Page<ClientResponse>> search(@RequestParam(required = false) String name,
                                                         @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         return ResponseEntity.ok(clientService.search(name, pageable));
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<Page<ClientResponse>> filter(@ModelAttribute ClientFilterRequest filter,
+                                                        @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        return ResponseEntity.ok(clientService.findByFilters(filter, pageable));
     }
 
     @GetMapping("/{id}")

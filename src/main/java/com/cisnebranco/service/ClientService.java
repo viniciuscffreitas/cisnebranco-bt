@@ -1,14 +1,17 @@
 package com.cisnebranco.service;
 
+import com.cisnebranco.dto.request.ClientFilterRequest;
 import com.cisnebranco.dto.request.ClientRequest;
 import com.cisnebranco.dto.response.ClientResponse;
 import com.cisnebranco.entity.Client;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.ClientMapper;
 import com.cisnebranco.repository.ClientRepository;
+import com.cisnebranco.specification.ClientSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,16 @@ public class ClientService {
     public Page<ClientResponse> search(String name, Pageable pageable) {
         return clientRepository.findByNameContainingIgnoreCase(name, pageable)
                 .map(clientMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ClientResponse> findByFilters(ClientFilterRequest filter, Pageable pageable) {
+        Specification<Client> spec = Specification
+                .where(ClientSpecification.nameContains(filter.name()))
+                .and(ClientSpecification.phoneContains(filter.phone()))
+                .and(ClientSpecification.registeredAfter(filter.registeredAfter()));
+
+        return clientRepository.findAll(spec, pageable).map(clientMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
