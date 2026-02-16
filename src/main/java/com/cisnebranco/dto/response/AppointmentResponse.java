@@ -1,0 +1,21 @@
+package com.cisnebranco.dto.response;
+
+import com.cisnebranco.entity.enums.AppointmentStatus;
+
+import java.time.LocalDateTime;
+
+public record AppointmentResponse(
+        Long id,
+        ClientResponse client,
+        PetResponse pet,
+        GroomerResponse groomer,
+        ServiceTypeResponse serviceType,
+        LocalDateTime scheduledStart,
+        LocalDateTime scheduledEnd,
+        AppointmentStatus status,
+        String notes,
+        Long technicalOsId,
+        LocalDateTime cancelledAt,
+        String cancellationReason,
+        LocalDateTime createdAt
+) {}

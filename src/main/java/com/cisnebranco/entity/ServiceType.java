@@ -24,4 +24,7 @@ public class ServiceType extends BaseEntity {
 
     @Column(name = "commission_rate", nullable = false, precision = 5, scale = 2)
     private BigDecimal commissionRate;
+
+    @Column(name = "default_duration_minutes", nullable = false)
+    private Integer defaultDurationMinutes = 30;
 }
