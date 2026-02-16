@@ -3,10 +3,23 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
-  notify:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Deploy notification
-        run: echo "Push to main detected. VPS auto-deploy will pick up changes within 2 minutes."
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: vinicius.xyz
+          username: vinicius
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ~/www/cisnebranco-bt
+            git pull origin main
+            docker compose up -d --build --remove-orphans
+            echo "Waiting for health check..."
+            sleep 15
+            docker compose ps
