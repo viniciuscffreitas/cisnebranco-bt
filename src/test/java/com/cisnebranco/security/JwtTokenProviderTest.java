@@ -1,6 +1,7 @@
 package com.cisnebranco.security;
 
 import com.cisnebranco.entity.enums.UserRole;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +38,7 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    void generateToken_containsGroomerId() {
+    void generateToken_containsRoleAndGroomerId() {
         UserPrincipal principal = new UserPrincipal(
                 2L, "groomer", "pass", UserRole.GROOMER, 42L, true);
 
@@ -45,18 +46,28 @@ class JwtTokenProviderTest {
 
         assertThat(tokenProvider.validateToken(token)).isTrue();
         assertThat(tokenProvider.getUsernameFromToken(token)).isEqualTo("groomer");
+
+        // Verify claims contain role and groomerId
+        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        Claims claims = Jwts.parser().verifyWith(key).build()
+                .parseSignedClaims(token).getPayload();
+        assertThat(claims.get("role", String.class)).isEqualTo("GROOMER");
+        assertThat(claims.get("groomerId", Long.class)).isEqualTo(42L);
     }
 
     @Test
     void validateToken_expired_returnsFalse() {
-        // Create provider with 0ms expiration — token is already expired
-        JwtTokenProvider shortLived = new JwtTokenProvider(SECRET, 0);
-        UserPrincipal principal = new UserPrincipal(
-                1L, "admin", "pass", UserRole.ADMIN, null, true);
+        // Build an already-expired token directly
+        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        String expiredToken = Jwts.builder()
+                .subject("admin")
+                .claim("type", "access")
+                .issuedAt(new Date(System.currentTimeMillis() - 7200000))
+                .expiration(new Date(System.currentTimeMillis() - 3600000))
+                .signWith(key)
+                .compact();
 
-        String token = shortLived.generateAccessToken(principal);
-
-        assertThat(tokenProvider.validateToken(token)).isFalse();
+        assertThat(tokenProvider.validateToken(expiredToken)).isFalse();
     }
 
     @Test

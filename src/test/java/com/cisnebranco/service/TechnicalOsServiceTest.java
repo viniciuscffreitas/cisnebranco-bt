@@ -16,12 +16,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
+@Transactional
 class TechnicalOsServiceTest extends BaseIntegrationTest {
 
     @Autowired private TechnicalOsService osService;
@@ -301,10 +303,14 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         Long osId = os.id();
 
         // checkIn creates OS in WAITING
-        if (targetStatus == OsStatus.IN_PROGRESS) {
-            osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.IN_PROGRESS));
+        if (targetStatus == OsStatus.WAITING) {
+            return osId;
         }
-        return osId;
+        osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.IN_PROGRESS));
+        if (targetStatus == OsStatus.IN_PROGRESS) {
+            return osId;
+        }
+        throw new IllegalArgumentException("Unsupported target status: " + targetStatus);
     }
 
     private Long createOsWithGroomer(Groomer groomer) {

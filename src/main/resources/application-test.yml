@@ -6,6 +6,12 @@ spring:
   flyway:
     enabled: true
 
+app:
+  jwt:
+    secret: test-secret-key-that-is-long-enough-for-hs256-algorithm-min-256-bits
+    access-token-expiration-ms: 3600000
+    refresh-token-expiration-ms: 604800000
+
 logging:
   level:
     com.cisnebranco: DEBUG

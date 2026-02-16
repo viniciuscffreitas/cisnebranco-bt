@@ -4,8 +4,10 @@ import com.cisnebranco.BaseIntegrationTest;
 import com.cisnebranco.entity.AppUser;
 import com.cisnebranco.entity.enums.UserRole;
 import com.cisnebranco.repository.AppUserRepository;
+import com.cisnebranco.repository.RefreshTokenRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,7 @@ class AuthControllerTest extends BaseIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private AppUserRepository userRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     @BeforeEach
@@ -33,6 +36,12 @@ class AuthControllerTest extends BaseIntegrationTest {
         admin.setRole(UserRole.ADMIN);
         admin.setActive(true);
         userRepository.save(admin);
+    }
+
+    @AfterEach
+    void tearDown() {
+        refreshTokenRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
@@ -85,7 +94,6 @@ class AuthControllerTest extends BaseIntegrationTest {
 
     @Test
     void refresh_validToken_returnsNewTokens() throws Exception {
-        // Login first to get a refresh token
         String refreshToken = loginAndGetRefreshToken();
 
         mockMvc.perform(post("/auth/refresh")

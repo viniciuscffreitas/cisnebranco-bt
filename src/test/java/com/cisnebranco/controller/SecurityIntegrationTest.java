@@ -6,8 +6,10 @@ import com.cisnebranco.entity.Groomer;
 import com.cisnebranco.entity.enums.UserRole;
 import com.cisnebranco.repository.AppUserRepository;
 import com.cisnebranco.repository.GroomerRepository;
+import com.cisnebranco.repository.RefreshTokenRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,7 @@ class SecurityIntegrationTest extends BaseIntegrationTest {
     @Autowired private ObjectMapper objectMapper;
     @Autowired private AppUserRepository userRepository;
     @Autowired private GroomerRepository groomerRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     private String adminToken;
@@ -57,6 +60,13 @@ class SecurityIntegrationTest extends BaseIntegrationTest {
 
         adminToken = login("secadmin", "admin123");
         groomerToken = login("secgroomer", "groomer123");
+    }
+
+    @AfterEach
+    void tearDown() {
+        refreshTokenRepository.deleteAll();
+        userRepository.deleteAll();
+        groomerRepository.deleteAll();
     }
 
     // --- Public endpoints ---
