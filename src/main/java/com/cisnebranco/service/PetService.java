@@ -30,25 +30,25 @@ public class PetService {
 
     @Transactional(readOnly = true)
     public Page<PetResponse> findAll(Pageable pageable) {
-        return petRepository.findAll(pageable)
+        return petRepository.findByActiveTrue(pageable)
                 .map(petMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
     public List<PetResponse> findByClient(Long clientId) {
-        return petRepository.findByClientId(clientId).stream()
+        return petRepository.findByClientIdAndActiveTrue(clientId).stream()
                 .map(petMapper::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public PetResponse findById(Long id) {
-        return petMapper.toResponse(findEntityById(id));
+        return petMapper.toResponse(findActiveEntityById(id));
     }
 
     @Transactional(readOnly = true)
     public PetGroomerViewResponse findByIdGroomerView(Long id) {
-        return petMapper.toGroomerViewResponse(findEntityById(id));
+        return petMapper.toGroomerViewResponse(findActiveEntityById(id));
     }
 
     @Transactional
@@ -102,6 +102,11 @@ public class PetService {
         Pet pet = findEntityById(id);
         pet.setActive(false);
         petRepository.save(pet);
+    }
+
+    private Pet findActiveEntityById(Long id) {
+        return petRepository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Pet", id));
     }
 
     private Pet findEntityById(Long id) {
