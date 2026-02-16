@@ -60,6 +60,7 @@ public class TechnicalOsService {
     private final TechnicalOsMapper osMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional
     public TechnicalOsResponse checkIn(CheckInRequest request) {
@@ -141,6 +142,14 @@ public class TechnicalOsService {
         os.setStatus(newStatus);
         var response = osMapper.toResponse(osRepository.save(os));
         auditService.log("STATUS_CHANGED", "TechnicalOs", osId, currentStatus + " → " + newStatus);
+
+        sseEmitterService.sendToAll("os-status-changed", Map.of(
+                "osId", osId,
+                "status", newStatus.name(),
+                "previousStatus", currentStatus.name(),
+                "petName", os.getPet().getName()
+        ));
+
         return response;
     }
 
