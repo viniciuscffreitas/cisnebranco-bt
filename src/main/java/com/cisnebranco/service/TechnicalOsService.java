@@ -25,6 +25,8 @@ import com.cisnebranco.repository.TechnicalOsRepository;
 import com.cisnebranco.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -146,10 +148,9 @@ public class TechnicalOsService {
     }
 
     @Transactional(readOnly = true)
-    public List<TechnicalOsResponse> findAll() {
-        return osRepository.findAllWithDetails().stream()
-                .map(osMapper::toResponse)
-                .toList();
+    public Page<TechnicalOsResponse> findAll(Pageable pageable) {
+        return osRepository.findAllWithDetails(pageable)
+                .map(osMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -167,10 +168,9 @@ public class TechnicalOsService {
     }
 
     @Transactional(readOnly = true)
-    public List<TechnicalOsGroomerViewResponse> findByGroomer(Long groomerId) {
-        return osRepository.findByGroomerIdWithDetails(groomerId).stream()
-                .map(osMapper::toGroomerViewResponse)
-                .toList();
+    public Page<TechnicalOsGroomerViewResponse> findByGroomer(Long groomerId, Pageable pageable) {
+        return osRepository.findByGroomerIdWithDetails(groomerId, pageable)
+                .map(osMapper::toGroomerViewResponse);
     }
 
     @Transactional(readOnly = true)

@@ -12,6 +12,8 @@ import com.cisnebranco.repository.BreedRepository;
 import com.cisnebranco.repository.ClientRepository;
 import com.cisnebranco.repository.PetRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,10 +29,9 @@ public class PetService {
     private final PetMapper petMapper;
 
     @Transactional(readOnly = true)
-    public List<PetResponse> findAll() {
-        return petRepository.findAll().stream()
-                .map(petMapper::toResponse)
-                .toList();
+    public Page<PetResponse> findAll(Pageable pageable) {
+        return petRepository.findAll(pageable)
+                .map(petMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
