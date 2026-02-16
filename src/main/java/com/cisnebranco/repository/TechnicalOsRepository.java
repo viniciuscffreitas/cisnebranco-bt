@@ -11,8 +11,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long> {
+
+    @Query("SELECT os FROM TechnicalOs os JOIN FETCH os.pet p JOIN FETCH p.client WHERE os.id = :id")
+    Optional<TechnicalOs> findByIdWithPetAndClient(@Param("id") Long id);
 
     @EntityGraph(attributePaths = {"pet", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
     @Query("SELECT os FROM TechnicalOs os")
