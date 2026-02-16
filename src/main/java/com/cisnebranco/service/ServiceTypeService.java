@@ -21,14 +21,14 @@ public class ServiceTypeService {
 
     @Transactional(readOnly = true)
     public List<ServiceTypeResponse> findAll() {
-        return serviceTypeRepository.findAll().stream()
+        return serviceTypeRepository.findByActiveTrue().stream()
                 .map(serviceTypeMapper::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ServiceTypeResponse findById(Long id) {
-        return serviceTypeMapper.toResponse(findEntityById(id));
+        return serviceTypeMapper.toResponse(findActiveEntityById(id));
     }
 
     @Transactional
@@ -42,6 +42,18 @@ public class ServiceTypeService {
         ServiceType serviceType = findEntityById(id);
         serviceTypeMapper.updateEntity(request, serviceType);
         return serviceTypeMapper.toResponse(serviceTypeRepository.save(serviceType));
+    }
+
+    @Transactional
+    public void deactivate(Long id) {
+        ServiceType serviceType = findEntityById(id);
+        serviceType.setActive(false);
+        serviceTypeRepository.save(serviceType);
+    }
+
+    private ServiceType findActiveEntityById(Long id) {
+        return serviceTypeRepository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("ServiceType", id));
     }
 
     private ServiceType findEntityById(Long id) {

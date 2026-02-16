@@ -41,4 +41,7 @@ public class Pet extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
+
+    @Column(nullable = false)
+    private boolean active = true;
 }

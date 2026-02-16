@@ -14,6 +14,8 @@ import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.HealthChecklistService;
 import com.cisnebranco.service.InspectionPhotoService;
 import com.cisnebranco.service.TechnicalOsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -31,17 +33,20 @@ import java.util.List;
 @RestController
 @RequestMapping("/os")
 @RequiredArgsConstructor
+@Tag(name = "Service Orders", description = "Technical OS (service order) management")
 public class TechnicalOsController {
 
     private final TechnicalOsService osService;
     private final InspectionPhotoService photoService;
     private final HealthChecklistService checklistService;
 
+    @Operation(summary = "Check in a pet and create a new service order")
     @PostMapping("/check-in")
     public ResponseEntity<TechnicalOsResponse> checkIn(@Valid @RequestBody CheckInRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(osService.checkIn(request));
     }
 
+    @Operation(summary = "Update the status of a service order")
     @PatchMapping("/{id}/status")
     public ResponseEntity<TechnicalOsResponse> updateStatus(@PathVariable Long id,
                                                              @Valid @RequestBody OsStatusUpdateRequest request,
@@ -50,6 +55,7 @@ public class TechnicalOsController {
         return ResponseEntity.ok(osService.updateStatus(id, request));
     }
 
+    @Operation(summary = "Assign a groomer to a service order")
     @PatchMapping("/{id}/groomer/{groomerId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TechnicalOsResponse> assignGroomer(@PathVariable Long id,
@@ -57,6 +63,7 @@ public class TechnicalOsController {
         return ResponseEntity.ok(osService.assignGroomer(id, groomerId));
     }
 
+    @Operation(summary = "List service orders with optional filters")
     @GetMapping
     public ResponseEntity<?> findAll(@AuthenticationPrincipal UserPrincipal principal,
                                       @ModelAttribute TechnicalOsFilterRequest filter,
@@ -75,6 +82,7 @@ public class TechnicalOsController {
         return ResponseEntity.ok(osService.findAll(pageable));
     }
 
+    @Operation(summary = "Find a service order by ID")
     @GetMapping("/{id}")
     public ResponseEntity<?> findById(@PathVariable Long id,
                                        @AuthenticationPrincipal UserPrincipal principal) {
@@ -87,6 +95,7 @@ public class TechnicalOsController {
 
     // --- Photos ---
 
+    @Operation(summary = "Upload an inspection photo for a service order")
     @PostMapping("/{id}/photos")
     public ResponseEntity<InspectionPhotoResponse> uploadPhoto(
             @PathVariable Long id,
@@ -97,6 +106,7 @@ public class TechnicalOsController {
         return ResponseEntity.status(HttpStatus.CREATED).body(photoService.upload(id, file, caption));
     }
 
+    @Operation(summary = "List inspection photos for a service order")
     @GetMapping("/{id}/photos")
     public ResponseEntity<List<InspectionPhotoResponse>> getPhotos(@PathVariable Long id) {
         return ResponseEntity.ok(photoService.findByOs(id));
@@ -104,6 +114,7 @@ public class TechnicalOsController {
 
     // --- Health checklist ---
 
+    @Operation(summary = "Create or update the health checklist for a service order")
     @PostMapping("/{id}/checklist")
     public ResponseEntity<HealthChecklistResponse> saveChecklist(
             @PathVariable Long id,
@@ -113,6 +124,7 @@ public class TechnicalOsController {
         return ResponseEntity.ok(checklistService.createOrUpdate(id, request));
     }
 
+    @Operation(summary = "Get the health checklist for a service order")
     @GetMapping("/{id}/checklist")
     public ResponseEntity<HealthChecklistResponse> getChecklist(@PathVariable Long id) {
         return ResponseEntity.ok(checklistService.findByOs(id));

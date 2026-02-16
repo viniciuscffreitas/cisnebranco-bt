@@ -34,6 +34,7 @@ public class AuthService {
     private final CustomUserDetailsService userDetailsService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final AppUserRepository appUserRepository;
+    private final AuditService auditService;
 
     @Value("${app.jwt.refresh-token-expiration-ms}")
     private long refreshTokenExpirationMs;
@@ -46,6 +47,8 @@ public class AuthService {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         String accessToken = tokenProvider.generateAccessToken(principal);
         String refreshToken = createRefreshToken(principal.getId());
+
+        auditService.log("LOGIN", "AppUser", principal.getId(), "User logged in", principal.getUsername());
 
         return new AuthResponse(accessToken, refreshToken, principal.getRole().name(), principal.getGroomerId());
     }

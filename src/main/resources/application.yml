@@ -40,6 +40,9 @@ app:
     refresh-token-expiration-ms: 604800000 # 7d
   upload:
     photo-dir: ${UPLOAD_DIR:./uploads/photos}
+  rate-limit:
+    requests-per-minute: ${RATE_LIMIT_RPM:60}
+    auth-requests-per-minute: ${RATE_LIMIT_AUTH_RPM:10}
   whatsapp:
     enabled: ${WHATSAPP_ENABLED:false}
     evolution-api-url: ${EVOLUTION_API_URL:http://localhost:8080}

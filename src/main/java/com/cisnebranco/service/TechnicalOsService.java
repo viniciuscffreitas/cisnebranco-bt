@@ -59,10 +59,11 @@ public class TechnicalOsService {
     private final InspectionPhotoRepository photoRepository;
     private final TechnicalOsMapper osMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
 
     @Transactional
     public TechnicalOsResponse checkIn(CheckInRequest request) {
-        Pet pet = petRepository.findById(request.petId())
+        Pet pet = petRepository.findByIdAndActiveTrue(request.petId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pet", request.petId()));
 
         TechnicalOs os = new TechnicalOs();
@@ -80,7 +81,7 @@ public class TechnicalOsService {
         BigDecimal totalCommission = BigDecimal.ZERO;
 
         for (Long serviceTypeId : request.serviceTypeIds()) {
-            ServiceType serviceType = serviceTypeRepository.findById(serviceTypeId)
+            ServiceType serviceType = serviceTypeRepository.findByIdAndActiveTrue(serviceTypeId)
                     .orElseThrow(() -> new ResourceNotFoundException("ServiceType", serviceTypeId));
 
             PricingMatrix pricing = pricingMatrixRepository
@@ -138,7 +139,9 @@ public class TechnicalOsService {
         }
 
         os.setStatus(newStatus);
-        return osMapper.toResponse(osRepository.save(os));
+        var response = osMapper.toResponse(osRepository.save(os));
+        auditService.log("STATUS_CHANGED", "TechnicalOs", osId, currentStatus + " → " + newStatus);
+        return response;
     }
 
     @Transactional

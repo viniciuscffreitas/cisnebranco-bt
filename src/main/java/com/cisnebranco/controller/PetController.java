@@ -5,6 +5,8 @@ import com.cisnebranco.dto.response.PetGroomerViewResponse;
 import com.cisnebranco.dto.response.PetResponse;
 import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.PetService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,22 +23,26 @@ import java.util.List;
 @RestController
 @RequestMapping("/pets")
 @RequiredArgsConstructor
+@Tag(name = "Pets", description = "Pet management")
 public class PetController {
 
     private final PetService petService;
 
+    @Operation(summary = "List all pets with pagination")
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<PetResponse>> findAll(@PageableDefault(size = 20, sort = "name") Pageable pageable) {
         return ResponseEntity.ok(petService.findAll(pageable));
     }
 
+    @Operation(summary = "List pets by client ID")
     @GetMapping("/by-client/{clientId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<PetResponse>> findByClient(@PathVariable Long clientId) {
         return ResponseEntity.ok(petService.findByClient(clientId));
     }
 
+    @Operation(summary = "Find a pet by ID")
     @GetMapping("/{id}")
     public ResponseEntity<?> findById(@PathVariable Long id,
                                        @AuthenticationPrincipal UserPrincipal principal) {
@@ -46,16 +52,25 @@ public class PetController {
         return ResponseEntity.ok(petService.findById(id));
     }
 
+    @Operation(summary = "Create a new pet")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PetResponse> create(@Valid @RequestBody PetRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(petService.create(request));
     }
 
+    @Operation(summary = "Update an existing pet")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PetResponse> update(@PathVariable Long id,
                                                @Valid @RequestBody PetRequest request) {
         return ResponseEntity.ok(petService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deactivate(@PathVariable Long id) {
+        petService.deactivate(id);
+        return ResponseEntity.noContent().build();
     }
 }
