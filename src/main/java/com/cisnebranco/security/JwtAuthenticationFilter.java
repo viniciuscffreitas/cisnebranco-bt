@@ -1,5 +1,6 @@
 package com.cisnebranco.security;
 
+import com.cisnebranco.service.AuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -16,6 +17,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 @Component
 @RequiredArgsConstructor
@@ -67,13 +69,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String extractTokenFromCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("jwt".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
+        if (cookies == null) {
+            return null;
         }
-        return null;
+        return Arrays.stream(cookies)
+                .filter(c -> AuthService.JWT_COOKIE_NAME.equals(c.getName()))
+                .findFirst()
+                .map(Cookie::getValue)
+                .orElse(null);
     }
 }

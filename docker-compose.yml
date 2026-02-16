@@ -83,6 +83,7 @@ services:
       - npm_network
 
   web:
+    profiles: ["web"]
     build:
       context: ../cisnebranco-web
       dockerfile: Dockerfile

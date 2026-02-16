@@ -12,6 +12,8 @@ import com.cisnebranco.repository.RefreshTokenRepository;
 import com.cisnebranco.security.CustomUserDetailsService;
 import com.cisnebranco.security.JwtTokenProvider;
 import com.cisnebranco.security.UserPrincipal;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,12 +28,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
+
+    public static final String JWT_COOKIE_NAME = "jwt";
+    public static final String REFRESH_COOKIE_NAME = "refresh_token";
 
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
@@ -87,62 +93,60 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(String refreshToken, HttpServletResponse response) {
-        if (refreshToken != null) {
-            refreshTokenRepository.findByToken(refreshToken)
+    public void logout(String refreshToken, HttpServletRequest request, HttpServletResponse response) {
+        String token = refreshToken;
+        if (token == null) {
+            token = extractCookieValue(request, REFRESH_COOKIE_NAME);
+        }
+
+        if (token != null) {
+            refreshTokenRepository.findByToken(token)
                     .ifPresentOrElse(
-                            token -> {
-                                Long userId = token.getUser().getId();
+                            stored -> {
+                                Long userId = stored.getUser().getId();
                                 refreshTokenRepository.deleteByUserId(userId);
                                 log.info("User {} logged out, all refresh tokens revoked", userId);
                             },
                             () -> log.warn("Logout attempted with unknown refresh token")
                     );
+        } else {
+            log.warn("Logout without refresh token — tokens not revoked");
         }
 
         clearAuthCookies(response);
     }
 
+    private String extractCookieValue(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        return Arrays.stream(cookies)
+                .filter(c -> name.equals(c.getName()))
+                .findFirst()
+                .map(Cookie::getValue)
+                .orElse(null);
+    }
+
     private void setAuthCookies(HttpServletResponse response, String accessToken, String refreshToken) {
-        ResponseCookie jwtCookie = ResponseCookie.from("jwt", accessToken)
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(Duration.ofMillis(accessTokenExpirationMs))
-                .sameSite("Lax")
-                .build();
-
-        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshToken)
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(Duration.ofMillis(refreshTokenExpirationMs))
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        addCookie(response, JWT_COOKIE_NAME, accessToken, "/", Duration.ofMillis(accessTokenExpirationMs));
+        addCookie(response, REFRESH_COOKIE_NAME, refreshToken, "/api/auth", Duration.ofMillis(refreshTokenExpirationMs));
     }
 
     private void clearAuthCookies(HttpServletResponse response) {
-        ResponseCookie jwtCookie = ResponseCookie.from("jwt", "")
+        addCookie(response, JWT_COOKIE_NAME, "", "/", Duration.ZERO);
+        addCookie(response, REFRESH_COOKIE_NAME, "", "/api/auth", Duration.ZERO);
+    }
+
+    private void addCookie(HttpServletResponse response, String name, String value, String path, Duration maxAge) {
+        ResponseCookie cookie = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(true)
-                .path("/")
-                .maxAge(0)
+                .path(path)
+                .maxAge(maxAge)
                 .sameSite("Lax")
                 .build();
-
-        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(0)
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     private String createRefreshToken(Long userId) {
