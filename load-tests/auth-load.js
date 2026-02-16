@@ -14,7 +14,7 @@ export const options = {
 };
 
 export default function () {
-    // Login
+    // Login — each VU gets its own access + refresh token
     const loginRes = http.post(
         `${BASE_URL}/auth/login`,
         JSON.stringify({ username: ADMIN_USER, password: ADMIN_PASS }),
@@ -33,7 +33,7 @@ export default function () {
     const tokens = JSON.parse(loginRes.body);
     sleep(0.5);
 
-    // Refresh token
+    // Refresh token — consumes old refresh token, gets new pair
     const refreshRes = http.post(
         `${BASE_URL}/auth/refresh`,
         JSON.stringify({ refreshToken: tokens.refreshToken }),
@@ -44,25 +44,10 @@ export default function () {
         "has new access token": (r) => JSON.parse(r.body).accessToken !== undefined,
     });
 
-    if (refreshRes.status === 200) {
-        const newTokens = JSON.parse(refreshRes.body);
-        sleep(0.5);
-
-        // Logout
-        const logoutRes = http.post(
-            `${BASE_URL}/auth/logout`,
-            JSON.stringify({ refreshToken: newTokens.refreshToken }),
-            {
-                headers: {
-                    Authorization: `Bearer ${newTokens.accessToken}`,
-                    "Content-Type": "application/json",
-                },
-            }
-        );
-        check(logoutRes, {
-            "logout status 204": (r) => r.status === 204,
-        });
-    }
+    // NOTE: Logout is intentionally skipped in multi-VU load tests.
+    // AuthService.logout() revokes ALL refresh tokens for the user,
+    // which would cascade-invalidate tokens held by other VUs sharing
+    // the same admin account.
 
     sleep(1);
 }
