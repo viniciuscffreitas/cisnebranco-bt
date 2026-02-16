@@ -1,10 +1,12 @@
 package com.cisnebranco.config;
 
 import com.cisnebranco.security.JwtAuthenticationFilter;
-import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -19,13 +21,26 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private RateLimitFilter rateLimitFilter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public RateLimitFilter rateLimitFilter(
+            @Value("${app.rate-limit.requests-per-minute:60}") int requestsPerMinute,
+            @Value("${app.rate-limit.auth-requests-per-minute:10}") int authRequestsPerMinute,
+            ObjectMapper objectMapper) {
+        this.rateLimitFilter = new RateLimitFilter(requestsPerMinute, authRequestsPerMinute, objectMapper);
+        return this.rateLimitFilter;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitFilter rateLimitFilter) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -38,9 +53,17 @@ public class SecurityConfig {
                 .requestMatchers("/reports/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(rateLimitFilter, jwtAuthenticationFilter.getClass());
 
         return http.build();
+    }
+
+    @Scheduled(fixedRate = 300_000) // every 5 minutes
+    public void evictRateLimitBuckets() {
+        if (rateLimitFilter != null) {
+            rateLimitFilter.evictExpiredBuckets();
+        }
     }
 
     @Bean
