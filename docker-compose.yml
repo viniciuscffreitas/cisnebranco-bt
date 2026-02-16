@@ -82,6 +82,17 @@ services:
       - default
       - npm_network
 
+  web:
+    build:
+      context: ../cisnebranco-web
+      dockerfile: Dockerfile
+    container_name: cisnebranco-web
+    restart: unless-stopped
+    ports:
+      - "8092:80"
+    networks:
+      - npm_network
+
 networks:
   npm_network:
     external: true
