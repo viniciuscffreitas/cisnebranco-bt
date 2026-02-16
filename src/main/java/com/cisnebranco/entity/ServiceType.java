@@ -27,4 +27,7 @@ public class ServiceType extends BaseEntity {
 
     @Column(name = "default_duration_minutes", nullable = false)
     private Integer defaultDurationMinutes = 30;
+
+    @Column(nullable = false)
+    private boolean active = true;
 }

@@ -44,6 +44,13 @@ public class ServiceTypeService {
         return serviceTypeMapper.toResponse(serviceTypeRepository.save(serviceType));
     }
 
+    @Transactional
+    public void deactivate(Long id) {
+        ServiceType serviceType = findEntityById(id);
+        serviceType.setActive(false);
+        serviceTypeRepository.save(serviceType);
+    }
+
     private ServiceType findEntityById(Long id) {
         return serviceTypeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ServiceType", id));

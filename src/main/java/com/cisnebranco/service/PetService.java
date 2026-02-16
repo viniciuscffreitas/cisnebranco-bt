@@ -97,6 +97,13 @@ public class PetService {
         return petMapper.toResponse(petRepository.save(pet));
     }
 
+    @Transactional
+    public void deactivate(Long id) {
+        Pet pet = findEntityById(id);
+        pet.setActive(false);
+        petRepository.save(pet);
+    }
+
     private Pet findEntityById(Long id) {
         return petRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Pet", id));

@@ -41,4 +41,11 @@ public class ServiceTypeController {
                                                        @Valid @RequestBody ServiceTypeRequest request) {
         return ResponseEntity.ok(serviceTypeService.update(id, request));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deactivate(@PathVariable Long id) {
+        serviceTypeService.deactivate(id);
+        return ResponseEntity.noContent().build();
+    }
 }

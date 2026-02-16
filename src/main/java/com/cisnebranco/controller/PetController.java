@@ -58,4 +58,11 @@ public class PetController {
                                                @Valid @RequestBody PetRequest request) {
         return ResponseEntity.ok(petService.update(id, request));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deactivate(@PathVariable Long id) {
+        petService.deactivate(id);
+        return ResponseEntity.noContent().build();
+    }
 }
