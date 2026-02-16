@@ -13,6 +13,10 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
       - UPLOAD_DIR=/app/uploads/photos
+      - WHATSAPP_ENABLED=${WHATSAPP_ENABLED:-false}
+      - EVOLUTION_API_URL=${EVOLUTION_API_URL:-http://evolution-api:8080}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-}
+      - EVOLUTION_INSTANCE_NAME=${EVOLUTION_INSTANCE_NAME:-cisnebranco}
     volumes:
       - uploads:/app/uploads/photos
     networks:
@@ -38,11 +42,45 @@ services:
       - POSTGRES_PASSWORD=${DB_PASS}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d cisnebranco"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: cisnebranco-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  evolution-api:
+    image: atendai/evolution-api:v2.2.3
+    container_name: cisnebranco-evolution
+    restart: unless-stopped
+    environment:
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-change-me-evolution-api-key}
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${EVOLUTION_DB_USER:-evolution}:${EVOLUTION_DB_PASS:-change-me-evolution-pass}@db:5432/evolution
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_LOCAL_ENABLED=false
+      - SERVER_PORT=8080
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+      - npm_network
 
 networks:
   npm_network:

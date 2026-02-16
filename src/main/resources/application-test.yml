@@ -7,6 +7,11 @@ spring:
     enabled: true
 
 app:
+  whatsapp:
+    enabled: false
+    evolution-api-url: http://localhost:9999
+    evolution-api-key: test-key
+    instance-name: test
   jwt:
     secret: test-secret-key-that-is-long-enough-for-hs256-algorithm-min-256-bits
     access-token-expiration-ms: 3600000
