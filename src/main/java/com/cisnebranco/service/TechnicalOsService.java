@@ -26,6 +26,7 @@ import com.cisnebranco.repository.ServiceTypeRepository;
 import com.cisnebranco.repository.TechnicalOsRepository;
 import com.cisnebranco.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -42,6 +45,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TechnicalOsService {
 
     private static final Map<OsStatus, OsStatus> VALID_TRANSITIONS = Map.of(
@@ -60,6 +64,7 @@ public class TechnicalOsService {
     private final TechnicalOsMapper osMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional
     public TechnicalOsResponse checkIn(CheckInRequest request) {
@@ -141,6 +146,24 @@ public class TechnicalOsService {
         os.setStatus(newStatus);
         var response = osMapper.toResponse(osRepository.save(os));
         auditService.log("STATUS_CHANGED", "TechnicalOs", osId, currentStatus + " → " + newStatus);
+
+        String petName = os.getPet().getName();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    sseEmitterService.sendToAll("os-status-changed", Map.of(
+                            "osId", osId,
+                            "status", newStatus.name(),
+                            "previousStatus", currentStatus.name(),
+                            "petName", petName
+                    ));
+                } catch (Exception e) {
+                    log.warn("Failed to broadcast SSE event for OS {}", osId, e);
+                }
+            }
+        });
+
         return response;
     }
 
