@@ -1,6 +1,7 @@
 package com.cisnebranco.entity;
 
 import com.cisnebranco.entity.enums.OsStatus;
+import com.cisnebranco.entity.enums.PaymentStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -60,6 +61,19 @@ public class TechnicalOs extends BaseEntity {
     private LocalDateTime deliveredAt;
 
     private String notes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
+    @Column(name = "total_paid", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalPaid = BigDecimal.ZERO;
+
+    @Column(name = "payment_balance", insertable = false, updatable = false, precision = 10, scale = 2)
+    private BigDecimal paymentBalance;
+
+    @OneToMany(mappedBy = "technicalOs", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PaymentEvent> paymentEvents = new ArrayList<>();
 
     @OneToMany(mappedBy = "technicalOs", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OsServiceItem> serviceItems = new ArrayList<>();
