@@ -6,6 +6,8 @@ import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.response.AppointmentResponse;
 import com.cisnebranco.dto.response.TimeSlot;
 import com.cisnebranco.service.AppointmentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -29,10 +31,12 @@ import java.util.List;
 @RequestMapping("/appointments")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
+@Tag(name = "Appointments", description = "Appointment scheduling and management")
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
+    @Operation(summary = "Create a new appointment")
     @PostMapping
     public ResponseEntity<AppointmentResponse> createAppointment(
             @Valid @RequestBody AppointmentRequest request) {
@@ -40,6 +44,7 @@ public class AppointmentController {
                 .body(appointmentService.createAppointment(request));
     }
 
+    @Operation(summary = "Update an existing appointment")
     @PatchMapping("/{id}")
     public ResponseEntity<AppointmentResponse> updateAppointment(
             @PathVariable Long id,
@@ -47,6 +52,7 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.updateAppointment(id, request));
     }
 
+    @Operation(summary = "Get available time slots for a groomer on a date")
     @GetMapping("/available-slots")
     public ResponseEntity<List<TimeSlot>> getAvailableSlots(
             @RequestParam Long groomerId,
@@ -55,6 +61,7 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.getAvailableSlots(groomerId, serviceTypeId, date));
     }
 
+    @Operation(summary = "List appointments within a date range")
     @GetMapping
     public ResponseEntity<List<AppointmentResponse>> findByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
@@ -62,11 +69,13 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.findByDateRange(startDate, endDate));
     }
 
+    @Operation(summary = "List appointments for a specific client")
     @GetMapping("/client/{clientId}")
     public ResponseEntity<List<AppointmentResponse>> findByClient(@PathVariable Long clientId) {
         return ResponseEntity.ok(appointmentService.findByClient(clientId));
     }
 
+    @Operation(summary = "Convert an appointment into a service order via check-in")
     @PostMapping("/{id}/convert")
     public ResponseEntity<AppointmentResponse> convertToOs(
             @PathVariable Long id,

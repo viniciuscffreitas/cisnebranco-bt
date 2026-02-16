@@ -4,6 +4,8 @@ import com.cisnebranco.dto.request.PaymentRequest;
 import com.cisnebranco.dto.response.PaymentEventResponse;
 import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.PaymentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,10 +25,12 @@ import java.util.List;
 @RequestMapping("/os/{osId}/payments")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
+@Tag(name = "Payments", description = "Payment recording and refund management for service orders")
 public class PaymentController {
 
     private final PaymentService paymentService;
 
+    @Operation(summary = "Record a payment for a service order")
     @PostMapping
     public ResponseEntity<PaymentEventResponse> recordPayment(
             @PathVariable Long osId,
@@ -36,11 +40,13 @@ public class PaymentController {
                 .body(paymentService.recordPayment(osId, request, principal.getId()));
     }
 
+    @Operation(summary = "Get payment history for a service order")
     @GetMapping
     public ResponseEntity<List<PaymentEventResponse>> getPaymentHistory(@PathVariable Long osId) {
         return ResponseEntity.ok(paymentService.getPaymentHistory(osId));
     }
 
+    @Operation(summary = "Refund a specific payment event")
     @PostMapping("/{eventId}/refund")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PaymentEventResponse> refundPayment(
