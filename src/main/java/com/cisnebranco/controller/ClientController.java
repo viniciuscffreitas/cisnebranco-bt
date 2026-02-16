@@ -5,11 +5,12 @@ import com.cisnebranco.dto.response.ClientResponse;
 import com.cisnebranco.service.ClientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/clients")
@@ -19,13 +20,14 @@ public class ClientController {
     private final ClientService clientService;
 
     @GetMapping
-    public ResponseEntity<List<ClientResponse>> findAll() {
-        return ResponseEntity.ok(clientService.findAll());
+    public ResponseEntity<Page<ClientResponse>> findAll(@PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        return ResponseEntity.ok(clientService.findAll(pageable));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<ClientResponse>> search(@RequestParam String name) {
-        return ResponseEntity.ok(clientService.search(name));
+    public ResponseEntity<Page<ClientResponse>> search(@RequestParam String name,
+                                                        @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        return ResponseEntity.ok(clientService.search(name, pageable));
     }
 
     @GetMapping("/{id}")

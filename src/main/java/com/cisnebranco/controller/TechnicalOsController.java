@@ -15,6 +15,9 @@ import com.cisnebranco.service.InspectionPhotoService;
 import com.cisnebranco.service.TechnicalOsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -54,13 +57,14 @@ public class TechnicalOsController {
     }
 
     @GetMapping
-    public ResponseEntity<?> findAll(@AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<?> findAll(@AuthenticationPrincipal UserPrincipal principal,
+                                      @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         if (principal.getRole() == UserRole.GROOMER) {
             requireGroomerProfile(principal);
-            List<TechnicalOsGroomerViewResponse> result = osService.findByGroomer(principal.getGroomerId());
+            Page<TechnicalOsGroomerViewResponse> result = osService.findByGroomer(principal.getGroomerId(), pageable);
             return ResponseEntity.ok(result);
         }
-        return ResponseEntity.ok(osService.findAll());
+        return ResponseEntity.ok(osService.findAll(pageable));
     }
 
     @GetMapping("/{id}")

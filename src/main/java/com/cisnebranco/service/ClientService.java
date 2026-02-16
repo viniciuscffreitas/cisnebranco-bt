@@ -7,6 +7,8 @@ import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.ClientMapper;
 import com.cisnebranco.repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,17 +22,15 @@ public class ClientService {
     private final ClientMapper clientMapper;
 
     @Transactional(readOnly = true)
-    public List<ClientResponse> findAll() {
-        return clientRepository.findAll().stream()
-                .map(clientMapper::toResponse)
-                .toList();
+    public Page<ClientResponse> findAll(Pageable pageable) {
+        return clientRepository.findAll(pageable)
+                .map(clientMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public List<ClientResponse> search(String name) {
-        return clientRepository.findByNameContainingIgnoreCase(name).stream()
-                .map(clientMapper::toResponse)
-                .toList();
+    public Page<ClientResponse> search(String name, Pageable pageable) {
+        return clientRepository.findByNameContainingIgnoreCase(name, pageable)
+                .map(clientMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
