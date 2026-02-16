@@ -15,10 +15,12 @@ public interface ServiceTypeMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "active", ignore = true)
     ServiceType toEntity(ServiceTypeRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "active", ignore = true)
     void updateEntity(ServiceTypeRequest request, @MappingTarget ServiceType serviceType);
 }

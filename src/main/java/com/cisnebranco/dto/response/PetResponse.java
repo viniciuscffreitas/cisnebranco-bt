@@ -11,5 +11,6 @@ public record PetResponse(
         String breedName,
         PetSize size,
         String notes,
-        Long clientId
+        Long clientId,
+        boolean active
 ) {}

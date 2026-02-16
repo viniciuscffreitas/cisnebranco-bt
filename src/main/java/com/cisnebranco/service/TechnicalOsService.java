@@ -62,7 +62,7 @@ public class TechnicalOsService {
 
     @Transactional
     public TechnicalOsResponse checkIn(CheckInRequest request) {
-        Pet pet = petRepository.findById(request.petId())
+        Pet pet = petRepository.findByIdAndActiveTrue(request.petId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pet", request.petId()));
 
         TechnicalOs os = new TechnicalOs();
@@ -80,7 +80,7 @@ public class TechnicalOsService {
         BigDecimal totalCommission = BigDecimal.ZERO;
 
         for (Long serviceTypeId : request.serviceTypeIds()) {
-            ServiceType serviceType = serviceTypeRepository.findById(serviceTypeId)
+            ServiceType serviceType = serviceTypeRepository.findByIdAndActiveTrue(serviceTypeId)
                     .orElseThrow(() -> new ResourceNotFoundException("ServiceType", serviceTypeId));
 
             PricingMatrix pricing = pricingMatrixRepository
