@@ -9,6 +9,7 @@ import com.cisnebranco.entity.enums.*;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.repository.*;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,7 @@ class PaymentServiceTest extends BaseIntegrationTest {
     @Autowired private PricingMatrixRepository pricingMatrixRepository;
     @Autowired private AppUserRepository userRepository;
     @Autowired private TechnicalOsRepository osRepository;
+    @Autowired private EntityManager entityManager;
 
     private Long osId;
     private Long userId;
@@ -217,13 +219,19 @@ class PaymentServiceTest extends BaseIntegrationTest {
 
     @Test
     void recordPayment_onCancelledOs_throws() {
-        // Manually set OS to cancelled status for testing
-        TechnicalOs os = osRepository.findById(osId).orElseThrow();
-        os.setStatus(OsStatus.WAITING); // force a known state
-        osRepository.saveAndFlush(os);
+        // payment_status is updatable=false (managed by trigger), so use native SQL
+        entityManager.createNativeQuery(
+                "UPDATE technical_os SET payment_status = 'CANCELLED' WHERE id = :id")
+                .setParameter("id", osId)
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
 
-        // We can't easily set payment_status to CANCELLED via the trigger,
-        // so we test the business rule path directly
-        // The CANCELLED check is done at application level in PaymentService
+        PaymentRequest request = new PaymentRequest(
+                new BigDecimal("10.00"), PaymentMethod.PIX, null, null);
+
+        assertThatThrownBy(() -> paymentService.recordPayment(osId, request, userId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("cancelled");
     }
 }

@@ -74,7 +74,7 @@ class AvailabilityServiceTest extends BaseIntegrationTest {
     }
 
     @Test
-    void createWindow_samTimesDifferentDays_succeeds() {
+    void createWindow_sameTimesDifferentDays_succeeds() {
         availabilityService.createWindow(groomer.getId(),
                 new AvailabilityWindowRequest(1, LocalTime.of(9, 0), LocalTime.of(17, 0)));
 
