@@ -53,6 +53,11 @@ services:
     image: redis:7-alpine
     container_name: cisnebranco-redis
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   evolution-api:
     image: atendai/evolution-api:v2.2.3
@@ -61,7 +66,7 @@ services:
     environment:
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-change-me-evolution-api-key}
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://${DB_USER}:${DB_PASS}@db:5432/evolution
+      - DATABASE_CONNECTION_URI=postgresql://${EVOLUTION_DB_USER:-evolution}:${EVOLUTION_DB_PASS:-change-me-evolution-pass}@db:5432/evolution
       - DATABASE_CONNECTION_CLIENT_NAME=evolution
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379
@@ -72,7 +77,7 @@ services:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     networks:
       - default
       - npm_network
