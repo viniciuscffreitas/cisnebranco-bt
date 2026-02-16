@@ -38,3 +38,8 @@ app:
     refresh-token-expiration-ms: 604800000 # 7d
   upload:
     photo-dir: ${UPLOAD_DIR:./uploads/photos}
+  whatsapp:
+    enabled: ${WHATSAPP_ENABLED:false}
+    evolution-api-url: ${EVOLUTION_API_URL:http://localhost:8080}
+    evolution-api-key: ${EVOLUTION_API_KEY:}
+    instance-name: ${EVOLUTION_INSTANCE_NAME:cisnebranco}
