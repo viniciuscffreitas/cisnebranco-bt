@@ -15,6 +15,9 @@ services:
       - UPLOAD_DIR=/app/uploads/photos
     volumes:
       - uploads:/app/uploads/photos
+    networks:
+      - default
+      - npm_network
     depends_on:
       db:
         condition: service_healthy
@@ -40,6 +43,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+networks:
+  npm_network:
+    external: true
+    name: npm_default
 
 volumes:
   pgdata:
