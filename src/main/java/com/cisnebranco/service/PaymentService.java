@@ -27,6 +27,7 @@ public class PaymentService {
     private final TechnicalOsRepository osRepository;
     private final AppUserRepository userRepository;
     private final PaymentEventMapper paymentEventMapper;
+    private final AuditService auditService;
 
     @Transactional
     public PaymentEventResponse recordPayment(Long osId, PaymentRequest request, Long userId) {
@@ -63,6 +64,9 @@ public class PaymentService {
         // Update total_paid — the DB trigger will auto-update payment_status
         os.setTotalPaid(newTotal);
         osRepository.save(os);
+
+        auditService.log("PAYMENT_RECORDED", "TechnicalOs", osId,
+                "Amount: " + request.amount() + " via " + request.method());
 
         return paymentEventMapper.toResponse(event);
     }
@@ -111,6 +115,9 @@ public class PaymentService {
 
         os.setTotalPaid(newTotal);
         osRepository.save(os);
+
+        auditService.log("PAYMENT_REFUNDED", "TechnicalOs", osId,
+                "Refund of payment #" + original.getId() + " amount: " + original.getAmount());
 
         return paymentEventMapper.toResponse(refund);
     }

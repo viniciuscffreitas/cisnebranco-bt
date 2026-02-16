@@ -59,6 +59,7 @@ public class TechnicalOsService {
     private final InspectionPhotoRepository photoRepository;
     private final TechnicalOsMapper osMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
 
     @Transactional
     public TechnicalOsResponse checkIn(CheckInRequest request) {
@@ -138,7 +139,9 @@ public class TechnicalOsService {
         }
 
         os.setStatus(newStatus);
-        return osMapper.toResponse(osRepository.save(os));
+        var response = osMapper.toResponse(osRepository.save(os));
+        auditService.log("STATUS_CHANGED", "TechnicalOs", osId, currentStatus + " → " + newStatus);
+        return response;
     }
 
     @Transactional
