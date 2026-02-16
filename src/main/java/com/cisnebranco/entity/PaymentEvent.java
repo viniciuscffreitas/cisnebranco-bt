@@ -33,10 +33,14 @@ public class PaymentEvent extends BaseEntity {
     @Column(nullable = false)
     private PaymentMethod method;
 
-    @Column(name = "transaction_ref")
+    @Column(name = "transaction_ref", length = 100)
     private String transactionRef;
 
     private String notes;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "refund_of_id")
+    private PaymentEvent refundOf;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)

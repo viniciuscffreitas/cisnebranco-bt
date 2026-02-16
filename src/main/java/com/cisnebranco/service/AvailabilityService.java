@@ -32,6 +32,17 @@ public class AvailabilityService {
             throw new BusinessException("End time must be after start time");
         }
 
+        // Check for overlapping windows on the same day
+        List<AvailabilityWindow> existing = windowRepository
+                .findByGroomerIdAndDayOfWeekAndActiveTrue(groomerId, request.dayOfWeek());
+
+        boolean overlaps = existing.stream().anyMatch(w ->
+                request.startTime().isBefore(w.getEndTime()) && request.endTime().isAfter(w.getStartTime()));
+
+        if (overlaps) {
+            throw new BusinessException("New window overlaps with an existing availability window");
+        }
+
         AvailabilityWindow window = new AvailabilityWindow();
         window.setGroomer(groomer);
         window.setDayOfWeek(request.dayOfWeek());

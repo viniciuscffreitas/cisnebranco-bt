@@ -21,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/os/{osId}/payments")
+@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class PaymentController {
 
@@ -46,6 +47,6 @@ public class PaymentController {
             @PathVariable Long osId,
             @PathVariable Long eventId,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(paymentService.refundPayment(eventId, principal.getId()));
+        return ResponseEntity.ok(paymentService.refundPayment(osId, eventId, principal.getId()));
     }
 }

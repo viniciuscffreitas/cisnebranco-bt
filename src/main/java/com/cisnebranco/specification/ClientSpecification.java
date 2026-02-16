@@ -10,13 +10,23 @@ import java.time.LocalDateTime;
 public class ClientSpecification {
 
     public static Specification<Client> nameContains(String name) {
-        return (root, query, cb) ->
-                name == null ? null : cb.like(cb.lower(root.get("name")), "%" + name.toLowerCase() + "%");
+        return (root, query, cb) -> {
+            if (name == null) return null;
+            String escaped = escapeLike(name.toLowerCase());
+            return cb.like(cb.lower(root.get("name")), "%" + escaped + "%");
+        };
     }
 
     public static Specification<Client> phoneContains(String phone) {
-        return (root, query, cb) ->
-                phone == null ? null : cb.like(root.get("phone"), "%" + phone + "%");
+        return (root, query, cb) -> {
+            if (phone == null) return null;
+            String escaped = escapeLike(phone);
+            return cb.like(root.get("phone"), "%" + escaped + "%");
+        };
+    }
+
+    private static String escapeLike(String value) {
+        return value.replace("%", "\\%").replace("_", "\\_");
     }
 
     public static Specification<Client> registeredAfter(LocalDateTime date) {

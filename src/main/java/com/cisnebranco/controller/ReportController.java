@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -44,7 +47,7 @@ public class ReportController {
 
     @GetMapping("/clients/top")
     public ResponseEntity<List<ClientSpendingReport>> getTopClients(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit) {
         return ResponseEntity.ok(reportService.getTopClients(limit));
     }
 

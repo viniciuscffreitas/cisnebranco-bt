@@ -26,6 +26,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long>,
     @Query("""
             SELECT a FROM Appointment a
             JOIN FETCH a.client JOIN FETCH a.pet JOIN FETCH a.groomer JOIN FETCH a.serviceType
+            LEFT JOIN FETCH a.technicalOs
             WHERE a.scheduledStart >= :start AND a.scheduledStart < :end
             ORDER BY a.scheduledStart
             """)
@@ -35,6 +36,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long>,
     @Query("""
             SELECT a FROM Appointment a
             JOIN FETCH a.client JOIN FETCH a.pet JOIN FETCH a.groomer JOIN FETCH a.serviceType
+            LEFT JOIN FETCH a.technicalOs
             WHERE a.client.id = :clientId
             ORDER BY a.scheduledStart DESC
             """)

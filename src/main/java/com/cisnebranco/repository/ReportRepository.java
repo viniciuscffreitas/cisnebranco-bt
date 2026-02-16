@@ -125,6 +125,6 @@ public interface ReportRepository extends JpaRepository<TechnicalOs, Long> {
     List<GroomerPerformanceReport> getGroomerPerformanceMV();
 
     @Modifying
-    @Query(value = "SELECT refresh_all_report_views()", nativeQuery = true)
+    @Query(value = "DO $$ BEGIN PERFORM refresh_all_report_views(); END $$", nativeQuery = true)
     void refreshMaterializedViews();
 }

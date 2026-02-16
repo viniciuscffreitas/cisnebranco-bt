@@ -14,4 +14,6 @@ public interface PaymentEventRepository extends JpaRepository<PaymentEvent, Long
 
     @Query("SELECT COALESCE(SUM(pe.amount), 0) FROM PaymentEvent pe WHERE pe.technicalOs.id = :osId")
     BigDecimal sumAmountByTechnicalOsId(@Param("osId") Long osId);
+
+    boolean existsByRefundOfId(Long refundOfId);
 }

@@ -30,11 +30,15 @@ public class PaymentService {
 
     @Transactional
     public PaymentEventResponse recordPayment(Long osId, PaymentRequest request, Long userId) {
-        TechnicalOs os = osRepository.findById(osId)
+        // Pessimistic lock prevents concurrent payments from exceeding total
+        TechnicalOs os = osRepository.findByIdForUpdate(osId)
                 .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
 
         if (os.getPaymentStatus() == PaymentStatus.CANCELLED) {
             throw new BusinessException("Cannot record payment for a cancelled OS");
+        }
+        if (os.getPaymentStatus() == PaymentStatus.REFUNDED) {
+            throw new BusinessException("Cannot record payment for a refunded OS");
         }
 
         BigDecimal newTotal = os.getTotalPaid().add(request.amount());
@@ -64,14 +68,31 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentEventResponse refundPayment(Long eventId, Long userId) {
+    public PaymentEventResponse refundPayment(Long osId, Long eventId, Long userId) {
         PaymentEvent original = paymentEventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("PaymentEvent", eventId));
 
-        TechnicalOs os = original.getTechnicalOs();
+        // Validate the event belongs to the specified OS
+        if (!original.getTechnicalOs().getId().equals(osId)) {
+            throw new BusinessException("Payment event does not belong to the specified OS");
+        }
 
         if (original.getAmount().compareTo(BigDecimal.ZERO) < 0) {
             throw new BusinessException("Cannot refund a refund event");
+        }
+
+        // Prevent double refund — unique index also enforces this at DB level
+        if (paymentEventRepository.existsByRefundOfId(eventId)) {
+            throw new BusinessException("This payment has already been refunded");
+        }
+
+        // Pessimistic lock on the OS to prevent concurrent refund/payment race
+        TechnicalOs os = osRepository.findByIdForUpdate(osId)
+                .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
+
+        BigDecimal newTotal = os.getTotalPaid().subtract(original.getAmount());
+        if (newTotal.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException("Refund would result in negative total paid");
         }
 
         AppUser user = userRepository.findById(userId)
@@ -83,11 +104,12 @@ public class PaymentService {
         refund.setMethod(original.getMethod());
         refund.setTransactionRef(original.getTransactionRef());
         refund.setNotes("Refund of payment #" + original.getId());
+        refund.setRefundOf(original);
         refund.setCreatedBy(user);
 
         paymentEventRepository.save(refund);
 
-        os.setTotalPaid(os.getTotalPaid().subtract(original.getAmount()));
+        os.setTotalPaid(newTotal);
         osRepository.save(os);
 
         return paymentEventMapper.toResponse(refund);

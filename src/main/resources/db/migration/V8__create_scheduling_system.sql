@@ -1,6 +1,7 @@
 -- Add default duration to service types
 ALTER TABLE service_types
-    ADD COLUMN default_duration_minutes INT NOT NULL DEFAULT 30;
+    ADD COLUMN default_duration_minutes INT NOT NULL DEFAULT 30
+        CHECK (default_duration_minutes > 0);
 
 -- Groomer availability windows (weekly schedule)
 CREATE TABLE availability_windows (

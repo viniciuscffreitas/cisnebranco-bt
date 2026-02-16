@@ -31,10 +31,20 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
+
+    private static final Map<AppointmentStatus, Set<AppointmentStatus>> VALID_TRANSITIONS = Map.of(
+            AppointmentStatus.SCHEDULED, Set.of(AppointmentStatus.CONFIRMED, AppointmentStatus.CANCELLED),
+            AppointmentStatus.CONFIRMED, Set.of(AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW),
+            AppointmentStatus.CANCELLED, Set.of(),
+            AppointmentStatus.NO_SHOW, Set.of(),
+            AppointmentStatus.COMPLETED, Set.of()
+    );
 
     private final AppointmentRepository appointmentRepository;
     private final AvailabilityWindowRepository windowRepository;
@@ -67,6 +77,9 @@ public class AppointmentService {
         LocalDateTime scheduledEnd = request.scheduledStart()
                 .plusMinutes(serviceType.getDefaultDurationMinutes());
 
+        // Validate appointment falls within groomer's availability window
+        validateAvailabilityWindow(request.groomerId(), request.scheduledStart(), scheduledEnd);
+
         Appointment appointment = new Appointment();
         appointment.setClient(client);
         appointment.setPet(pet);
@@ -76,7 +89,7 @@ public class AppointmentService {
         appointment.setScheduledEnd(scheduledEnd);
         appointment.setNotes(request.notes());
 
-        // The DB trigger will reject if there's a conflict
+        // The DB trigger will also reject if there's a conflict
         return appointmentMapper.toResponse(appointmentRepository.save(appointment));
     }
 
@@ -85,17 +98,20 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment", id));
 
-        if (request.status() == AppointmentStatus.CANCELLED) {
-            appointment.setStatus(AppointmentStatus.CANCELLED);
-            appointment.setCancelledAt(LocalDateTime.now());
-            appointment.setCancellationReason(request.cancellationReason());
-        } else if (request.status() != null) {
+        if (request.status() != null) {
+            validateStatusTransition(appointment.getStatus(), request.status());
+
+            if (request.status() == AppointmentStatus.CANCELLED) {
+                appointment.setCancelledAt(LocalDateTime.now());
+                appointment.setCancellationReason(request.cancellationReason());
+            }
             appointment.setStatus(request.status());
         }
 
         if (request.scheduledStart() != null) {
             LocalDateTime newEnd = request.scheduledStart()
                     .plusMinutes(appointment.getServiceType().getDefaultDurationMinutes());
+            validateAvailabilityWindow(appointment.getGroomer().getId(), request.scheduledStart(), newEnd);
             appointment.setScheduledStart(request.scheduledStart());
             appointment.setScheduledEnd(newEnd);
         }
@@ -105,6 +121,33 @@ public class AppointmentService {
         }
 
         return appointmentMapper.toResponse(appointmentRepository.save(appointment));
+    }
+
+    private void validateStatusTransition(AppointmentStatus current, AppointmentStatus target) {
+        Set<AppointmentStatus> allowed = VALID_TRANSITIONS.getOrDefault(current, Set.of());
+        if (!allowed.contains(target)) {
+            throw new BusinessException("Invalid status transition: " + current + " → " + target);
+        }
+    }
+
+    private void validateAvailabilityWindow(Long groomerId, LocalDateTime start, LocalDateTime end) {
+        int dayOfWeek = start.getDayOfWeek().getValue();
+        List<AvailabilityWindow> windows = windowRepository
+                .findByGroomerIdAndDayOfWeekAndActiveTrue(groomerId, dayOfWeek);
+
+        if (windows.isEmpty()) {
+            throw new BusinessException("Groomer has no availability on " + start.getDayOfWeek());
+        }
+
+        LocalTime startTime = start.toLocalTime();
+        LocalTime endTime = end.toLocalTime();
+
+        boolean withinWindow = windows.stream().anyMatch(w ->
+                !startTime.isBefore(w.getStartTime()) && !endTime.isAfter(w.getEndTime()));
+
+        if (!withinWindow) {
+            throw new BusinessException("Appointment time is outside groomer's availability window");
+        }
     }
 
     @Transactional(readOnly = true)

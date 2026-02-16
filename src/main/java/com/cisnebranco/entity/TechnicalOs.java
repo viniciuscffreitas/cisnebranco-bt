@@ -63,7 +63,7 @@ public class TechnicalOs extends BaseEntity {
     private String notes;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status", nullable = false)
+    @Column(name = "payment_status", nullable = false, updatable = false)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     @Column(name = "total_paid", nullable = false, precision = 10, scale = 2)
@@ -72,7 +72,7 @@ public class TechnicalOs extends BaseEntity {
     @Column(name = "payment_balance", insertable = false, updatable = false, precision = 10, scale = 2)
     private BigDecimal paymentBalance;
 
-    @OneToMany(mappedBy = "technicalOs", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "technicalOs")
     private List<PaymentEvent> paymentEvents = new ArrayList<>();
 
     @OneToMany(mappedBy = "technicalOs", cascade = CascadeType.ALL, orphanRemoval = true)

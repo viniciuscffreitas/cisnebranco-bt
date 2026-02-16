@@ -3,6 +3,7 @@ package com.cisnebranco.specification;
 import com.cisnebranco.entity.TechnicalOs;
 import com.cisnebranco.entity.enums.OsStatus;
 import com.cisnebranco.entity.enums.PaymentStatus;
+import jakarta.persistence.criteria.JoinType;
 import lombok.experimental.UtilityClass;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -18,12 +19,12 @@ public class TechnicalOsSpecification {
 
     public static Specification<TechnicalOs> hasGroomer(Long groomerId) {
         return (root, query, cb) ->
-                groomerId == null ? null : cb.equal(root.join("groomer").get("id"), groomerId);
+                groomerId == null ? null : cb.equal(root.join("groomer", JoinType.LEFT).get("id"), groomerId);
     }
 
     public static Specification<TechnicalOs> hasClient(Long clientId) {
         return (root, query, cb) ->
-                clientId == null ? null : cb.equal(root.join("pet").join("client").get("id"), clientId);
+                clientId == null ? null : cb.equal(root.join("pet", JoinType.LEFT).join("client", JoinType.LEFT).get("id"), clientId);
     }
 
     public static Specification<TechnicalOs> hasPaymentStatus(PaymentStatus paymentStatus) {

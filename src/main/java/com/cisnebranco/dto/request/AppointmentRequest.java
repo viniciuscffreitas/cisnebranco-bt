@@ -1,5 +1,6 @@
 package com.cisnebranco.dto.request;
 
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
@@ -9,6 +10,6 @@ public record AppointmentRequest(
         @NotNull Long petId,
         @NotNull Long groomerId,
         @NotNull Long serviceTypeId,
-        @NotNull LocalDateTime scheduledStart,
+        @NotNull @Future LocalDateTime scheduledStart,
         String notes
 ) {}

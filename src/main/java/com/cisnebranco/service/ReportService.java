@@ -57,7 +57,11 @@ public class ReportService {
     @Scheduled(cron = "0 0 * * * *")
     public void refreshReports() {
         log.info("Refreshing materialized report views...");
-        reportRepository.refreshMaterializedViews();
-        log.info("Materialized report views refreshed successfully");
+        try {
+            reportRepository.refreshMaterializedViews();
+            log.info("Materialized report views refreshed successfully");
+        } catch (Exception e) {
+            log.error("Failed to refresh materialized report views", e);
+        }
     }
 }
