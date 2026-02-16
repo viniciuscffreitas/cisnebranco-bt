@@ -22,6 +22,7 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -29,6 +30,7 @@ import java.util.List;
 @Service
 public class ReportExportService {
 
+    private static final String BOM = "\uFEFF";
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -36,22 +38,24 @@ public class ReportExportService {
 
     public String dailyRevenueToCsv(List<DailyRevenueReport> data) {
         StringWriter sw = new StringWriter();
+        sw.write(BOM);
         PrintWriter pw = new PrintWriter(sw);
         pw.println("Data,Total OS,Receita Total,Comissão Total,Saldo Total,Total Pago");
         for (DailyRevenueReport r : data) {
             pw.printf("%s,%d,%s,%s,%s,%s%n",
                     r.getReportDate().format(DATE_FMT),
                     r.getTotalOrders(),
-                    r.getTotalRevenue(),
-                    r.getTotalCommission(),
-                    r.getTotalBalance(),
-                    r.getTotalPaid());
+                    fmtMoney(r.getTotalRevenue()),
+                    fmtMoney(r.getTotalCommission()),
+                    fmtMoney(r.getTotalBalance()),
+                    fmtMoney(r.getTotalPaid()));
         }
         return sw.toString();
     }
 
     public String serviceTypeToCsv(List<ServiceTypeReport> data) {
         StringWriter sw = new StringWriter();
+        sw.write(BOM);
         PrintWriter pw = new PrintWriter(sw);
         pw.println("ID,Serviço,Total Serviços,Receita Total,Preço Médio");
         for (ServiceTypeReport r : data) {
@@ -59,14 +63,15 @@ public class ReportExportService {
                     r.getServiceTypeId(),
                     escapeCsv(r.getServiceName()),
                     r.getTotalServices(),
-                    r.getTotalRevenue(),
-                    r.getAvgPrice());
+                    fmtMoney(r.getTotalRevenue()),
+                    fmtMoney(r.getAvgPrice()));
         }
         return sw.toString();
     }
 
     public String clientSpendingToCsv(List<ClientSpendingReport> data) {
         StringWriter sw = new StringWriter();
+        sw.write(BOM);
         PrintWriter pw = new PrintWriter(sw);
         pw.println("ID,Cliente,Total OS,Total Gasto,Primeira Visita,Última Visita");
         for (ClientSpendingReport r : data) {
@@ -74,7 +79,7 @@ public class ReportExportService {
                     r.getClientId(),
                     escapeCsv(r.getClientName()),
                     r.getTotalOrders(),
-                    r.getTotalSpent(),
+                    fmtMoney(r.getTotalSpent()),
                     r.getFirstVisit() != null ? r.getFirstVisit().format(DATETIME_FMT) : "",
                     r.getLastVisit() != null ? r.getLastVisit().format(DATETIME_FMT) : "");
         }
@@ -83,6 +88,7 @@ public class ReportExportService {
 
     public String groomerPerformanceToCsv(List<GroomerPerformanceReport> data) {
         StringWriter sw = new StringWriter();
+        sw.write(BOM);
         PrintWriter pw = new PrintWriter(sw);
         pw.println("ID,Groomer,Total OS,Receita Total,Comissão Total,Valor Médio OS");
         for (GroomerPerformanceReport r : data) {
@@ -90,30 +96,33 @@ public class ReportExportService {
                     r.getGroomerId(),
                     escapeCsv(r.getGroomerName()),
                     r.getTotalOrders(),
-                    r.getTotalRevenue(),
-                    r.getTotalCommission(),
-                    r.getAvgOrderValue());
+                    fmtMoney(r.getTotalRevenue()),
+                    fmtMoney(r.getTotalCommission()),
+                    fmtMoney(r.getAvgOrderValue()));
         }
         return sw.toString();
     }
 
     public String statusDistributionToCsv(List<OsStatusDistribution> data) {
         StringWriter sw = new StringWriter();
+        sw.write(BOM);
         PrintWriter pw = new PrintWriter(sw);
         pw.println("Status,Quantidade,Valor Total");
         for (OsStatusDistribution r : data) {
-            pw.printf("%s,%d,%s%n", r.getStatus(), r.getOrderCount(), r.getTotalValue());
+            pw.printf("%s,%d,%s%n", escapeCsv(r.getStatus()), r.getOrderCount(), fmtMoney(r.getTotalValue()));
         }
         return sw.toString();
     }
 
     public String paymentMethodsToCsv(List<PaymentMethodStats> data) {
         StringWriter sw = new StringWriter();
+        sw.write(BOM);
         PrintWriter pw = new PrintWriter(sw);
         pw.println("Método,Transações,Valor Total,Valor Médio");
         for (PaymentMethodStats r : data) {
             pw.printf("%s,%d,%s,%s%n",
-                    r.getMethod(), r.getTransactionCount(), r.getTotalAmount(), r.getAvgTransaction());
+                    escapeCsv(r.getMethod()), r.getTransactionCount(),
+                    fmtMoney(r.getTotalAmount()), fmtMoney(r.getAvgTransaction()));
         }
         return sw.toString();
     }
@@ -129,10 +138,10 @@ public class ReportExportService {
             DailyRevenueReport r = data.get(i);
             addCell(table, r.getReportDate().format(DATE_FMT));
             addCell(table, String.valueOf(r.getTotalOrders()));
-            addCellRight(table, "R$ " + r.getTotalRevenue());
-            addCellRight(table, "R$ " + r.getTotalCommission());
-            addCellRight(table, "R$ " + r.getTotalBalance());
-            addCellRight(table, "R$ " + r.getTotalPaid());
+            addCellRight(table, "R$ " + fmtMoney(r.getTotalRevenue()));
+            addCellRight(table, "R$ " + fmtMoney(r.getTotalCommission()));
+            addCellRight(table, "R$ " + fmtMoney(r.getTotalBalance()));
+            addCellRight(table, "R$ " + fmtMoney(r.getTotalPaid()));
         });
     }
 
@@ -145,8 +154,8 @@ public class ReportExportService {
             ServiceTypeReport r = data.get(i);
             addCell(table, r.getServiceName());
             addCell(table, String.valueOf(r.getTotalServices()));
-            addCellRight(table, "R$ " + r.getTotalRevenue());
-            addCellRight(table, "R$ " + r.getAvgPrice());
+            addCellRight(table, "R$ " + fmtMoney(r.getTotalRevenue()));
+            addCellRight(table, "R$ " + fmtMoney(r.getAvgPrice()));
         });
     }
 
@@ -159,7 +168,7 @@ public class ReportExportService {
             ClientSpendingReport r = data.get(i);
             addCell(table, r.getClientName());
             addCell(table, String.valueOf(r.getTotalOrders()));
-            addCellRight(table, "R$ " + r.getTotalSpent());
+            addCellRight(table, "R$ " + fmtMoney(r.getTotalSpent()));
             addCell(table, r.getFirstVisit() != null ? r.getFirstVisit().format(DATETIME_FMT) : "—");
             addCell(table, r.getLastVisit() != null ? r.getLastVisit().format(DATETIME_FMT) : "—");
         });
@@ -174,9 +183,9 @@ public class ReportExportService {
             GroomerPerformanceReport r = data.get(i);
             addCell(table, r.getGroomerName());
             addCell(table, String.valueOf(r.getTotalOrders()));
-            addCellRight(table, "R$ " + r.getTotalRevenue());
-            addCellRight(table, "R$ " + r.getTotalCommission());
-            addCellRight(table, "R$ " + r.getAvgOrderValue());
+            addCellRight(table, "R$ " + fmtMoney(r.getTotalRevenue()));
+            addCellRight(table, "R$ " + fmtMoney(r.getTotalCommission()));
+            addCellRight(table, "R$ " + fmtMoney(r.getAvgOrderValue()));
         });
     }
 
@@ -192,38 +201,40 @@ public class ReportExportService {
         Document document = new Document(PageSize.A4.rotate(), 36, 36, 54, 36);
         PdfWriter.getInstance(document, baos);
         document.open();
+        try {
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
+            Paragraph titleParagraph = new Paragraph(title, titleFont);
+            titleParagraph.setAlignment(Element.ALIGN_CENTER);
+            titleParagraph.setSpacingAfter(12);
+            document.add(titleParagraph);
 
-        Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
-        Paragraph titleParagraph = new Paragraph(title, titleFont);
-        titleParagraph.setAlignment(Element.ALIGN_CENTER);
-        titleParagraph.setSpacingAfter(12);
-        document.add(titleParagraph);
+            Font dateFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.GRAY);
+            Paragraph dateParagraph = new Paragraph("Gerado em: " + LocalDate.now().format(DATE_FMT), dateFont);
+            dateParagraph.setAlignment(Element.ALIGN_RIGHT);
+            dateParagraph.setSpacingAfter(10);
+            document.add(dateParagraph);
 
-        Font dateFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.GRAY);
-        Paragraph dateParagraph = new Paragraph("Gerado em: " + LocalDate.now().format(DATE_FMT), dateFont);
-        dateParagraph.setAlignment(Element.ALIGN_RIGHT);
-        dateParagraph.setSpacingAfter(10);
-        document.add(dateParagraph);
+            PdfPTable table = new PdfPTable(headers.length);
+            table.setWidthPercentage(100);
+            table.setWidths(widths);
 
-        PdfPTable table = new PdfPTable(headers.length);
-        table.setWidthPercentage(100);
-        table.setWidths(widths);
+            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE);
+            for (String header : headers) {
+                PdfPCell cell = new PdfPCell(new Phrase(header, headerFont));
+                cell.setBackgroundColor(new Color(41, 65, 122));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setPadding(6);
+                table.addCell(cell);
+            }
 
-        Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE);
-        for (String header : headers) {
-            PdfPCell cell = new PdfPCell(new Phrase(header, headerFont));
-            cell.setBackgroundColor(new Color(41, 65, 122));
-            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setPadding(6);
-            table.addCell(cell);
+            for (int i = 0; i < rowCount; i++) {
+                rowWriter.writeRow(table, i);
+            }
+
+            document.add(table);
+        } finally {
+            document.close();
         }
-
-        for (int i = 0; i < rowCount; i++) {
-            rowWriter.writeRow(table, i);
-        }
-
-        document.add(table);
-        document.close();
         return baos.toByteArray();
     }
 
@@ -240,6 +251,11 @@ public class ReportExportService {
         cell.setPadding(4);
         cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         table.addCell(cell);
+    }
+
+    private String fmtMoney(BigDecimal value) {
+        if (value == null) return "0.00";
+        return value.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
     }
 
     private String escapeCsv(String value) {
