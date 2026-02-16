@@ -48,7 +48,7 @@ public class AuthService {
         String accessToken = tokenProvider.generateAccessToken(principal);
         String refreshToken = createRefreshToken(principal.getId());
 
-        auditService.log("LOGIN", "AppUser", principal.getId(), "User logged in");
+        auditService.log("LOGIN", "AppUser", principal.getId(), "User logged in", principal.getUsername());
 
         return new AuthResponse(accessToken, refreshToken, principal.getRole().name(), principal.getGroomerId());
     }

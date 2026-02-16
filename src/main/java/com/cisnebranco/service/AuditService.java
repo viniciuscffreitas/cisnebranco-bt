@@ -5,7 +5,6 @@ import com.cisnebranco.repository.AuditLogRepository;
 import com.cisnebranco.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -23,21 +22,30 @@ public class AuditService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void log(String action, String entityType, Long entityId, String details) {
-        AuditLog entry = new AuditLog();
-        entry.setAction(action);
-        entry.setEntityType(entityType);
-        entry.setEntityId(entityId);
-        entry.setDetails(details);
-        entry.setUsername(getCurrentUsername());
-        entry.setIpAddress(getCurrentIp());
-
-        auditLogRepository.save(entry);
-        log.debug("Audit: {} {} #{} by {} - {}", action, entityType, entityId, entry.getUsername(), details);
+        persistEntry(action, entityType, entityId, details, getCurrentUsername());
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void log(String action, String entityType, Long entityId) {
-        log(action, entityType, entityId, null);
+    public void log(String action, String entityType, Long entityId, String details, String username) {
+        persistEntry(action, entityType, entityId, details, username);
+    }
+
+    private void persistEntry(String action, String entityType, Long entityId, String details, String username) {
+        try {
+            AuditLog entry = new AuditLog();
+            entry.setAction(action);
+            entry.setEntityType(entityType);
+            entry.setEntityId(entityId);
+            entry.setDetails(details);
+            entry.setUsername(username);
+            entry.setIpAddress(getCurrentIp());
+
+            auditLogRepository.save(entry);
+            log.debug("Audit: {} {} #{} by {} - {}", action, entityType, entityId, username, details);
+        } catch (Exception e) {
+            log.error("Failed to persist audit log: action={}, entity={}#{}, user={}",
+                    action, entityType, entityId, username, e);
+        }
     }
 
     private String getCurrentUsername() {
@@ -45,22 +53,26 @@ public class AuditService {
         if (auth != null && auth.getPrincipal() instanceof UserPrincipal principal) {
             return principal.getUsername();
         }
+        if (auth != null) {
+            log.warn("SecurityContext principal is not UserPrincipal: type={}", auth.getPrincipal().getClass().getSimpleName());
+        }
         return "system";
     }
 
     private String getCurrentIp() {
-        try {
-            var attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attrs != null) {
-                var request = attrs.getRequest();
-                String xff = request.getHeader("X-Forwarded-For");
-                if (xff != null && !xff.isEmpty()) {
-                    return xff.split(",")[0].trim();
-                }
-                return request.getRemoteAddr();
-            }
-        } catch (Exception ignored) {
+        var requestAttrs = RequestContextHolder.getRequestAttributes();
+        if (requestAttrs == null) {
+            return null;
         }
-        return null;
+        if (!(requestAttrs instanceof ServletRequestAttributes servletAttrs)) {
+            log.warn("RequestAttributes is not ServletRequestAttributes: {}", requestAttrs.getClass().getSimpleName());
+            return null;
+        }
+        var request = servletAttrs.getRequest();
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isEmpty()) {
+            return xff.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }
