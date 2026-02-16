@@ -1,6 +1,7 @@
 package com.cisnebranco.controller;
 
 import com.cisnebranco.dto.request.CreateUserRequest;
+import com.cisnebranco.dto.response.CurrentUserResponse;
 import com.cisnebranco.dto.response.UserResponse;
 import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.UserService;
@@ -15,7 +16,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -27,13 +27,15 @@ public class UserController {
 
     @Operation(summary = "Get current authenticated user info")
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(Map.of(
-                "id", principal.getId(),
-                "username", principal.getUsername(),
-                "role", principal.getRole().name(),
-                "groomerId", principal.getGroomerId() != null ? principal.getGroomerId() : 0
-        ));
+    public ResponseEntity<CurrentUserResponse> getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {
+        Long groomerId = principal.getGroomerId();
+        var response = new CurrentUserResponse(
+                principal.getId(),
+                principal.getUsername(),
+                principal.getRole().name(),
+                groomerId != null ? groomerId : 0
+        );
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Create a new user account")

@@ -6,6 +6,7 @@ import com.cisnebranco.dto.response.AuthResponse;
 import com.cisnebranco.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,8 +41,9 @@ public class AuthController {
     @Operation(summary = "Logout", description = "Revokes all refresh tokens and clears cookies")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestBody(required = false) RefreshTokenRequest request,
+                                        HttpServletRequest httpRequest,
                                         HttpServletResponse response) {
-        authService.logout(request != null ? request.refreshToken() : null, response);
+        authService.logout(request != null ? request.refreshToken() : null, httpRequest, response);
         return ResponseEntity.noContent().build();
     }
 }

@@ -27,9 +27,13 @@ jobs:
               git pull origin main
             fi
 
-            # Build and deploy all services
+            # Build and deploy
             cd ~/www/cisnebranco-bt
-            docker compose up -d --build --remove-orphans
+            if [ -d ~/www/cisnebranco-web ]; then
+              docker compose --profile web up -d --build --remove-orphans
+            else
+              docker compose up -d --build --remove-orphans
+            fi
             echo "Waiting for health check..."
             sleep 15
-            docker compose ps
+            docker compose --profile web ps
