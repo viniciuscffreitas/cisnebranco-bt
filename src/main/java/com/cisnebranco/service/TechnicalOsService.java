@@ -2,8 +2,10 @@ package com.cisnebranco.service;
 
 import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.request.OsStatusUpdateRequest;
+import com.cisnebranco.dto.request.TechnicalOsFilterRequest;
 import com.cisnebranco.dto.response.TechnicalOsGroomerViewResponse;
 import com.cisnebranco.dto.response.TechnicalOsResponse;
+import com.cisnebranco.specification.TechnicalOsSpecification;
 import com.cisnebranco.entity.Groomer;
 import com.cisnebranco.entity.OsServiceItem;
 import com.cisnebranco.entity.Pet;
@@ -27,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -151,6 +154,18 @@ public class TechnicalOsService {
     public Page<TechnicalOsResponse> findAll(Pageable pageable) {
         return osRepository.findAllWithDetails(pageable)
                 .map(osMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TechnicalOsResponse> findByFilters(TechnicalOsFilterRequest filter, Pageable pageable) {
+        Specification<TechnicalOs> spec = Specification
+                .where(TechnicalOsSpecification.hasStatus(filter.status()))
+                .and(TechnicalOsSpecification.hasGroomer(filter.groomerId()))
+                .and(TechnicalOsSpecification.hasClient(filter.clientId()))
+                .and(TechnicalOsSpecification.hasPaymentStatus(filter.paymentStatus()))
+                .and(TechnicalOsSpecification.createdBetween(filter.startDate(), filter.endDate()));
+
+        return osRepository.findAll(spec, pageable).map(osMapper::toResponse);
     }
 
     @Transactional(readOnly = true)

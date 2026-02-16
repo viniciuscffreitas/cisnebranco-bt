@@ -1,6 +1,7 @@
 package com.cisnebranco.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -78,6 +79,23 @@ public class GlobalExceptionHandler {
         log.warn("Access denied: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiError(403, "Access denied"));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String rootMsg = ex.getMostSpecificCause().getMessage();
+        log.warn("Data integrity violation: {}", rootMsg);
+
+        if (rootMsg != null && rootMsg.contains("Appointment conflicts")) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiError(409, "Appointment conflicts with an existing appointment for this groomer"));
+        }
+        if (rootMsg != null && rootMsg.contains("unique constraint") || rootMsg != null && rootMsg.contains("duplicate key")) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiError(409, "A record with this data already exists"));
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiError(409, "Data integrity violation: operation conflicts with existing data"));
     }
 
     @ExceptionHandler(Exception.class)

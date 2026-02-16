@@ -4,16 +4,24 @@ import com.cisnebranco.entity.TechnicalOs;
 import com.cisnebranco.entity.enums.OsStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long> {
+public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long>, JpaSpecificationExecutor<TechnicalOs> {
+
+    @EntityGraph(attributePaths = {"pet", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    Page<TechnicalOs> findAll(Specification<TechnicalOs> spec, Pageable pageable);
 
     @Query("SELECT os FROM TechnicalOs os JOIN FETCH os.pet p JOIN FETCH p.client WHERE os.id = :id")
     Optional<TechnicalOs> findByIdWithPetAndClient(@Param("id") Long id);
@@ -33,6 +41,10 @@ public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long> 
     @EntityGraph(attributePaths = {"pet", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
     @Query("SELECT os FROM TechnicalOs os WHERE os.groomer.id = :groomerId")
     Page<TechnicalOs> findByGroomerIdWithDetails(@Param("groomerId") Long groomerId, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT os FROM TechnicalOs os WHERE os.id = :id")
+    Optional<TechnicalOs> findByIdForUpdate(@Param("id") Long id);
 
     List<TechnicalOs> findByStatus(OsStatus status);
 

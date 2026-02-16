@@ -3,6 +3,7 @@ package com.cisnebranco.controller;
 import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.request.HealthChecklistRequest;
 import com.cisnebranco.dto.request.OsStatusUpdateRequest;
+import com.cisnebranco.dto.request.TechnicalOsFilterRequest;
 import com.cisnebranco.dto.response.HealthChecklistResponse;
 import com.cisnebranco.dto.response.InspectionPhotoResponse;
 import com.cisnebranco.dto.response.TechnicalOsGroomerViewResponse;
@@ -58,11 +59,18 @@ public class TechnicalOsController {
 
     @GetMapping
     public ResponseEntity<?> findAll(@AuthenticationPrincipal UserPrincipal principal,
+                                      @ModelAttribute TechnicalOsFilterRequest filter,
                                       @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         if (principal.getRole() == UserRole.GROOMER) {
             requireGroomerProfile(principal);
             Page<TechnicalOsGroomerViewResponse> result = osService.findByGroomer(principal.getGroomerId(), pageable);
             return ResponseEntity.ok(result);
+        }
+        boolean hasFilters = filter.status() != null || filter.groomerId() != null
+                || filter.clientId() != null || filter.paymentStatus() != null
+                || filter.startDate() != null || filter.endDate() != null;
+        if (hasFilters) {
+            return ResponseEntity.ok(osService.findByFilters(filter, pageable));
         }
         return ResponseEntity.ok(osService.findAll(pageable));
     }
