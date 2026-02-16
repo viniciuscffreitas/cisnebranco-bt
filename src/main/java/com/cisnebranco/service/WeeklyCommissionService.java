@@ -10,6 +10,8 @@ import com.cisnebranco.repository.GroomerRepository;
 import com.cisnebranco.repository.TechnicalOsRepository;
 import com.cisnebranco.repository.WeeklyCommissionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,16 +64,14 @@ public class WeeklyCommissionService {
     }
 
     @Transactional(readOnly = true)
-    public List<WeeklyCommissionResponse> findByGroomer(Long groomerId) {
-        return commissionRepository.findByGroomerId(groomerId).stream()
-                .map(commissionMapper::toResponse)
-                .toList();
+    public Page<WeeklyCommissionResponse> findByGroomer(Long groomerId, Pageable pageable) {
+        return commissionRepository.findByGroomerId(groomerId, pageable)
+                .map(commissionMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public List<WeeklyCommissionResponse> findAll() {
-        return commissionRepository.findAll().stream()
-                .map(commissionMapper::toResponse)
-                .toList();
+    public Page<WeeklyCommissionResponse> findAll(Pageable pageable) {
+        return commissionRepository.findAll(pageable)
+                .map(commissionMapper::toResponse);
     }
 }

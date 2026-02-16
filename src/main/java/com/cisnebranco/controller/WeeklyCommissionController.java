@@ -8,12 +8,13 @@ import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.WeeklyCommissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/commissions")
@@ -29,20 +30,22 @@ public class WeeklyCommissionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<WeeklyCommissionResponse>> findAll(
-            @AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<Page<WeeklyCommissionResponse>> findAll(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PageableDefault(size = 20, sort = "weekStart") Pageable pageable) {
         if (principal.getRole() == UserRole.GROOMER) {
             if (principal.getGroomerId() == null) {
                 throw new BusinessException("User account is not linked to a groomer profile. Contact an administrator.");
             }
-            return ResponseEntity.ok(commissionService.findByGroomer(principal.getGroomerId()));
+            return ResponseEntity.ok(commissionService.findByGroomer(principal.getGroomerId(), pageable));
         }
-        return ResponseEntity.ok(commissionService.findAll());
+        return ResponseEntity.ok(commissionService.findAll(pageable));
     }
 
     @GetMapping("/groomer/{groomerId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<WeeklyCommissionResponse>> findByGroomer(@PathVariable Long groomerId) {
-        return ResponseEntity.ok(commissionService.findByGroomer(groomerId));
+    public ResponseEntity<Page<WeeklyCommissionResponse>> findByGroomer(@PathVariable Long groomerId,
+                                                                         @PageableDefault(size = 20, sort = "weekStart") Pageable pageable) {
+        return ResponseEntity.ok(commissionService.findByGroomer(groomerId, pageable));
     }
 }
