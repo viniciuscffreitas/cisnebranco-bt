@@ -18,6 +18,7 @@ public class BreedService {
 
     private final BreedRepository breedRepository;
     private final BreedMapper breedMapper;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional(readOnly = true)
     public List<BreedResponse> findAll() {
@@ -34,20 +35,25 @@ public class BreedService {
     @Transactional
     public BreedResponse create(BreedRequest request) {
         Breed breed = breedMapper.toEntity(request);
-        return breedMapper.toResponse(breedRepository.save(breed));
+        Breed saved = breedRepository.save(breed);
+        sseEmitterService.broadcastAfterCommit("breed-changed", "created", saved.getId());
+        return breedMapper.toResponse(saved);
     }
 
     @Transactional
     public BreedResponse update(Long id, BreedRequest request) {
         Breed breed = findEntityById(id);
         breedMapper.updateEntity(request, breed);
+        sseEmitterService.broadcastAfterCommit("breed-changed", "updated", id);
         return breedMapper.toResponse(breedRepository.save(breed));
     }
 
     @Transactional
     public void delete(Long id) {
         Breed breed = findEntityById(id);
+        Long breedId = breed.getId();
         breedRepository.delete(breed);
+        sseEmitterService.broadcastAfterCommit("breed-changed", "deleted", breedId);
     }
 
     private Breed findEntityById(Long id) {

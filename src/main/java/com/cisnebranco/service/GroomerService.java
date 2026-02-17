@@ -18,6 +18,7 @@ public class GroomerService {
 
     private final GroomerRepository groomerRepository;
     private final GroomerMapper groomerMapper;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional(readOnly = true)
     public List<GroomerResponse> findAll() {
@@ -41,13 +42,16 @@ public class GroomerService {
     @Transactional
     public GroomerResponse create(GroomerRequest request) {
         Groomer groomer = groomerMapper.toEntity(request);
-        return groomerMapper.toResponse(groomerRepository.save(groomer));
+        Groomer saved = groomerRepository.save(groomer);
+        sseEmitterService.broadcastAfterCommit("groomer-changed", "created", saved.getId());
+        return groomerMapper.toResponse(saved);
     }
 
     @Transactional
     public GroomerResponse update(Long id, GroomerRequest request) {
         Groomer groomer = findEntityById(id);
         groomerMapper.updateEntity(request, groomer);
+        sseEmitterService.broadcastAfterCommit("groomer-changed", "updated", id);
         return groomerMapper.toResponse(groomerRepository.save(groomer));
     }
 
@@ -56,6 +60,7 @@ public class GroomerService {
         Groomer groomer = findEntityById(id);
         groomer.setActive(false);
         groomerRepository.save(groomer);
+        sseEmitterService.broadcastAfterCommit("groomer-changed", "deactivated", id);
     }
 
     private Groomer findEntityById(Long id) {

@@ -23,6 +23,7 @@ public class UserService {
     private final AppUserRepository userRepository;
     private final GroomerRepository groomerRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional
     public UserResponse create(CreateUserRequest request) {
@@ -44,7 +45,9 @@ public class UserService {
             user.setGroomer(groomer);
         }
 
-        return toResponse(userRepository.save(user));
+        AppUser saved = userRepository.save(user);
+        sseEmitterService.broadcastAfterCommit("user-changed", "created", saved.getId());
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -60,6 +63,7 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
         user.setActive(false);
         userRepository.save(user);
+        sseEmitterService.broadcastAfterCommit("user-changed", "deactivated", id);
     }
 
     private UserResponse toResponse(AppUser user) {

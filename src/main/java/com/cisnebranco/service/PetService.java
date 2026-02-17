@@ -27,6 +27,7 @@ public class PetService {
     private final ClientRepository clientRepository;
     private final BreedRepository breedRepository;
     private final PetMapper petMapper;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional(readOnly = true)
     public Page<PetResponse> findAll(Pageable pageable) {
@@ -69,7 +70,9 @@ public class PetService {
             pet.setBreed(breed);
         }
 
-        return petMapper.toResponse(petRepository.save(pet));
+        Pet saved = petRepository.save(pet);
+        sseEmitterService.broadcastAfterCommit("pet-changed", "created", saved.getId());
+        return petMapper.toResponse(saved);
     }
 
     @Transactional
@@ -94,6 +97,7 @@ public class PetService {
             pet.setBreed(null);
         }
 
+        sseEmitterService.broadcastAfterCommit("pet-changed", "updated", id);
         return petMapper.toResponse(petRepository.save(pet));
     }
 
@@ -102,6 +106,7 @@ public class PetService {
         Pet pet = findEntityById(id);
         pet.setActive(false);
         petRepository.save(pet);
+        sseEmitterService.broadcastAfterCommit("pet-changed", "deactivated", id);
     }
 
     private Pet findActiveEntityById(Long id) {
