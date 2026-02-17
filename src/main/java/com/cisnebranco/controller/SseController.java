@@ -28,9 +28,10 @@ public class SseController {
     public SseEmitter streamNotifications(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) {
-        boolean isReconnect = lastEventId != null;
+        boolean isReconnect = lastEventId != null && !lastEventId.isBlank();
         if (isReconnect) {
-            log.info("SSE reconnection for user: {} (id: {}), last event: {}", principal.getUsername(), principal.getId(), lastEventId);
+            String safeLastEventId = lastEventId.length() > 20 ? lastEventId.substring(0, 20) + "..." : lastEventId;
+            log.info("SSE reconnection for user: {} (id: {}), last event: {}", principal.getUsername(), principal.getId(), safeLastEventId);
         } else {
             log.info("SSE connection opened for user: {} (id: {})", principal.getUsername(), principal.getId());
         }
