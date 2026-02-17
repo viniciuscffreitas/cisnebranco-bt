@@ -18,6 +18,7 @@ public class ServiceTypeService {
 
     private final ServiceTypeRepository serviceTypeRepository;
     private final ServiceTypeMapper serviceTypeMapper;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional(readOnly = true)
     public List<ServiceTypeResponse> findAll() {
@@ -34,13 +35,16 @@ public class ServiceTypeService {
     @Transactional
     public ServiceTypeResponse create(ServiceTypeRequest request) {
         ServiceType serviceType = serviceTypeMapper.toEntity(request);
-        return serviceTypeMapper.toResponse(serviceTypeRepository.save(serviceType));
+        ServiceType saved = serviceTypeRepository.save(serviceType);
+        sseEmitterService.broadcastAfterCommit("service-type-changed", "created", saved.getId());
+        return serviceTypeMapper.toResponse(saved);
     }
 
     @Transactional
     public ServiceTypeResponse update(Long id, ServiceTypeRequest request) {
         ServiceType serviceType = findEntityById(id);
         serviceTypeMapper.updateEntity(request, serviceType);
+        sseEmitterService.broadcastAfterCommit("service-type-changed", "updated", id);
         return serviceTypeMapper.toResponse(serviceTypeRepository.save(serviceType));
     }
 
@@ -49,6 +53,7 @@ public class ServiceTypeService {
         ServiceType serviceType = findEntityById(id);
         serviceType.setActive(false);
         serviceTypeRepository.save(serviceType);
+        sseEmitterService.broadcastAfterCommit("service-type-changed", "deactivated", id);
     }
 
     private ServiceType findActiveEntityById(Long id) {

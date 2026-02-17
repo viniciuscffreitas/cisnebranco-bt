@@ -3,6 +3,8 @@ package com.cisnebranco.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -76,6 +78,38 @@ public class SseEmitterService {
 
     public void sendToAll(String eventName, Object data) {
         emitters.forEach((userId, emitter) -> trySend(userId, emitter, eventName, data));
+    }
+
+    /**
+     * Registers an afterCommit hook that broadcasts an entity-change SSE event once the
+     * current transaction commits successfully. Safe to call from any @Transactional method.
+     *
+     * Guards:
+     * - Null id: logs at error and returns — prevents NPE inside Map.of()
+     * - No active transaction: logs at warn and returns — prevents IllegalStateException
+     *   from registerSynchronization()
+     */
+    public void broadcastAfterCommit(String eventName, String action, Long id) {
+        if (id == null) {
+            log.error("broadcastAfterCommit called with null id for event '{}' action '{}' — notification suppressed", eventName, action);
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            log.warn("broadcastAfterCommit called outside active transaction for event '{}' id {} — notification suppressed", eventName, id);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    sendToAll(eventName, Map.of("action", action, "id", id));
+                } catch (Exception e) {
+                    // sendToAll handles IOException/IllegalStateException internally via trySend;
+                    // this catch is a final safety net for any unexpected runtime exception.
+                    log.error("Unexpected error broadcasting SSE event '{}' for id {}", eventName, id, e);
+                }
+            }
+        });
     }
 
     private void trySend(Long userId, SseEmitter emitter, String eventName, Object data) {

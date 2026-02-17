@@ -23,6 +23,7 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional(readOnly = true)
     public Page<ClientResponse> findAll(Pageable pageable) {
@@ -54,20 +55,25 @@ public class ClientService {
     @Transactional
     public ClientResponse create(ClientRequest request) {
         Client client = clientMapper.toEntity(request);
-        return clientMapper.toResponse(clientRepository.save(client));
+        Client saved = clientRepository.save(client);
+        sseEmitterService.broadcastAfterCommit("client-changed", "created", saved.getId());
+        return clientMapper.toResponse(saved);
     }
 
     @Transactional
     public ClientResponse update(Long id, ClientRequest request) {
         Client client = findEntityById(id);
         clientMapper.updateEntity(request, client);
+        sseEmitterService.broadcastAfterCommit("client-changed", "updated", id);
         return clientMapper.toResponse(clientRepository.save(client));
     }
 
     @Transactional
     public void delete(Long id) {
         Client client = findEntityById(id);
+        Long clientId = client.getId();
         clientRepository.delete(client);
+        sseEmitterService.broadcastAfterCommit("client-changed", "deleted", clientId);
     }
 
     private Client findEntityById(Long id) {
