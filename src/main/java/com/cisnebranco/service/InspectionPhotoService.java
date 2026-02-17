@@ -5,6 +5,7 @@ import com.cisnebranco.entity.InspectionPhoto;
 import com.cisnebranco.entity.TechnicalOs;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
+import com.cisnebranco.mapper.InspectionPhotoMapper;
 import com.cisnebranco.repository.InspectionPhotoRepository;
 import com.cisnebranco.repository.TechnicalOsRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class InspectionPhotoService {
 
     private final InspectionPhotoRepository photoRepository;
     private final TechnicalOsRepository osRepository;
+    private final InspectionPhotoMapper photoMapper;
 
     @Value("${app.upload.photo-dir}")
     private String photoDir;
@@ -73,7 +75,7 @@ public class InspectionPhotoService {
             photo.setCaption(caption);
 
             InspectionPhoto saved = photoRepository.save(photo);
-            return toResponse(saved);
+            return photoMapper.toResponse(saved);
         } catch (Exception e) {
             try {
                 Files.deleteIfExists(targetFile);
@@ -87,16 +89,7 @@ public class InspectionPhotoService {
     @Transactional(readOnly = true)
     public List<InspectionPhotoResponse> findByOs(Long osId) {
         return photoRepository.findByTechnicalOsId(osId).stream()
-                .map(this::toResponse)
+                .map(photoMapper::toResponse)
                 .toList();
-    }
-
-    private InspectionPhotoResponse toResponse(InspectionPhoto photo) {
-        return new InspectionPhotoResponse(
-                photo.getId(),
-                photo.getTechnicalOs().getId(),
-                photo.getFilePath(),
-                photo.getCaption()
-        );
     }
 }
