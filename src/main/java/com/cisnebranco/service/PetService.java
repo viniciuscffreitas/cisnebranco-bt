@@ -12,20 +12,15 @@ import com.cisnebranco.repository.BreedRepository;
 import com.cisnebranco.repository.ClientRepository;
 import com.cisnebranco.repository.PetRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class PetService {
 
     private final PetRepository petRepository;
@@ -76,7 +71,7 @@ public class PetService {
         }
 
         Pet saved = petRepository.save(pet);
-        broadcastEvent("pet-changed", "created", saved.getId());
+        sseEmitterService.broadcastAfterCommit("pet-changed", "created", saved.getId());
         return petMapper.toResponse(saved);
     }
 
@@ -102,7 +97,7 @@ public class PetService {
             pet.setBreed(null);
         }
 
-        broadcastEvent("pet-changed", "updated", id);
+        sseEmitterService.broadcastAfterCommit("pet-changed", "updated", id);
         return petMapper.toResponse(petRepository.save(pet));
     }
 
@@ -111,7 +106,7 @@ public class PetService {
         Pet pet = findEntityById(id);
         pet.setActive(false);
         petRepository.save(pet);
-        broadcastEvent("pet-changed", "deactivated", id);
+        sseEmitterService.broadcastAfterCommit("pet-changed", "deactivated", id);
     }
 
     private Pet findActiveEntityById(Long id) {
@@ -122,18 +117,5 @@ public class PetService {
     private Pet findEntityById(Long id) {
         return petRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Pet", id));
-    }
-
-    private void broadcastEvent(String eventName, String action, Long id) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    sseEmitterService.sendToAll(eventName, Map.of("action", action, "id", id));
-                } catch (Exception e) {
-                    log.warn("Failed to broadcast SSE event '{}' for id {}", eventName, id, e);
-                }
-            }
-        });
     }
 }

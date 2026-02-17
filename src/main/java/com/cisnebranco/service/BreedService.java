@@ -7,18 +7,13 @@ import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.BreedMapper;
 import com.cisnebranco.repository.BreedRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class BreedService {
 
     private final BreedRepository breedRepository;
@@ -41,7 +36,7 @@ public class BreedService {
     public BreedResponse create(BreedRequest request) {
         Breed breed = breedMapper.toEntity(request);
         Breed saved = breedRepository.save(breed);
-        broadcastEvent("breed-changed", "created", saved.getId());
+        sseEmitterService.broadcastAfterCommit("breed-changed", "created", saved.getId());
         return breedMapper.toResponse(saved);
     }
 
@@ -49,7 +44,7 @@ public class BreedService {
     public BreedResponse update(Long id, BreedRequest request) {
         Breed breed = findEntityById(id);
         breedMapper.updateEntity(request, breed);
-        broadcastEvent("breed-changed", "updated", id);
+        sseEmitterService.broadcastAfterCommit("breed-changed", "updated", id);
         return breedMapper.toResponse(breedRepository.save(breed));
     }
 
@@ -58,24 +53,11 @@ public class BreedService {
         Breed breed = findEntityById(id);
         Long breedId = breed.getId();
         breedRepository.delete(breed);
-        broadcastEvent("breed-changed", "deleted", breedId);
+        sseEmitterService.broadcastAfterCommit("breed-changed", "deleted", breedId);
     }
 
     private Breed findEntityById(Long id) {
         return breedRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Breed", id));
-    }
-
-    private void broadcastEvent(String eventName, String action, Long id) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    sseEmitterService.sendToAll(eventName, Map.of("action", action, "id", id));
-                } catch (Exception e) {
-                    log.warn("Failed to broadcast SSE event '{}' for id {}", eventName, id, e);
-                }
-            }
-        });
     }
 }

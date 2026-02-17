@@ -9,21 +9,16 @@ import com.cisnebranco.mapper.ClientMapper;
 import com.cisnebranco.repository.ClientRepository;
 import com.cisnebranco.specification.ClientSpecification;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class ClientService {
 
     private final ClientRepository clientRepository;
@@ -61,7 +56,7 @@ public class ClientService {
     public ClientResponse create(ClientRequest request) {
         Client client = clientMapper.toEntity(request);
         Client saved = clientRepository.save(client);
-        broadcastEvent("client-changed", "created", saved.getId());
+        sseEmitterService.broadcastAfterCommit("client-changed", "created", saved.getId());
         return clientMapper.toResponse(saved);
     }
 
@@ -69,7 +64,7 @@ public class ClientService {
     public ClientResponse update(Long id, ClientRequest request) {
         Client client = findEntityById(id);
         clientMapper.updateEntity(request, client);
-        broadcastEvent("client-changed", "updated", id);
+        sseEmitterService.broadcastAfterCommit("client-changed", "updated", id);
         return clientMapper.toResponse(clientRepository.save(client));
     }
 
@@ -78,24 +73,11 @@ public class ClientService {
         Client client = findEntityById(id);
         Long clientId = client.getId();
         clientRepository.delete(client);
-        broadcastEvent("client-changed", "deleted", clientId);
+        sseEmitterService.broadcastAfterCommit("client-changed", "deleted", clientId);
     }
 
     private Client findEntityById(Long id) {
         return clientRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Client", id));
-    }
-
-    private void broadcastEvent(String eventName, String action, Long id) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    sseEmitterService.sendToAll(eventName, Map.of("action", action, "id", id));
-                } catch (Exception e) {
-                    log.warn("Failed to broadcast SSE event '{}' for id {}", eventName, id, e);
-                }
-            }
-        });
     }
 }

@@ -10,19 +10,14 @@ import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.repository.AppUserRepository;
 import com.cisnebranco.repository.GroomerRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class UserService {
 
     private final AppUserRepository userRepository;
@@ -51,7 +46,7 @@ public class UserService {
         }
 
         AppUser saved = userRepository.save(user);
-        broadcastEvent("user-changed", "created", saved.getId());
+        sseEmitterService.broadcastAfterCommit("user-changed", "created", saved.getId());
         return toResponse(saved);
     }
 
@@ -68,7 +63,7 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
         user.setActive(false);
         userRepository.save(user);
-        broadcastEvent("user-changed", "deactivated", id);
+        sseEmitterService.broadcastAfterCommit("user-changed", "deactivated", id);
     }
 
     private UserResponse toResponse(AppUser user) {
@@ -80,18 +75,5 @@ public class UserService {
                 user.getGroomer() != null ? user.getGroomer().getName() : null,
                 user.isActive()
         );
-    }
-
-    private void broadcastEvent(String eventName, String action, Long id) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    sseEmitterService.sendToAll(eventName, Map.of("action", action, "id", id));
-                } catch (Exception e) {
-                    log.warn("Failed to broadcast SSE event '{}' for id {}", eventName, id, e);
-                }
-            }
-        });
     }
 }
