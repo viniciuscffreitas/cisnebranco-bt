@@ -9,5 +9,6 @@ public record PetGroomerViewResponse(
         Species species,
         String breedName,
         PetSize size,
-        String notes
+        String notes,
+        String clientFirstName
 ) {}
