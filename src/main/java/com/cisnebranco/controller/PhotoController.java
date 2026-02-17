@@ -2,6 +2,7 @@ package com.cisnebranco.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -13,12 +14,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/photos")
 @Tag(name = "Photos", description = "Serve uploaded inspection photos")
+@Slf4j
 public class PhotoController {
 
     private final Path photoBaseDir;
@@ -34,6 +37,7 @@ public class PhotoController {
         Path filePath = photoBaseDir.resolve(String.valueOf(osId)).resolve(filename).normalize();
 
         if (!filePath.startsWith(photoBaseDir)) {
+            log.warn("Path traversal attempt blocked: osId={}, filename={}", osId, filename);
             return ResponseEntity.badRequest().build();
         }
 
@@ -49,8 +53,12 @@ public class PhotoController {
             return ResponseEntity.ok()
                     .contentType(mediaType)
                     .body(resource);
-        } catch (Exception e) {
+        } catch (MalformedURLException e) {
+            log.error("Malformed photo URL for osId={}, filename={}: {}", osId, filename, e.getMessage());
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Unexpected error serving photo osId={}, filename={}", osId, filename, e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

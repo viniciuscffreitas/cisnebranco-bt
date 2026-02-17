@@ -2,9 +2,11 @@ package com.cisnebranco.mapper;
 
 import com.cisnebranco.dto.response.PetGroomerViewResponse;
 import com.cisnebranco.dto.response.PetResponse;
+import com.cisnebranco.entity.Client;
 import com.cisnebranco.entity.Pet;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 @Mapper(componentModel = "spring")
 public interface PetMapper {
@@ -16,6 +18,14 @@ public interface PetMapper {
     PetResponse toResponse(Pet pet);
 
     @Mapping(source = "breed.name", target = "breedName")
-    @Mapping(target = "clientFirstName", expression = "java(pet.getClient() != null ? pet.getClient().getName().split(\" \")[0] : null)")
+    @Mapping(source = "client", target = "clientFirstName", qualifiedByName = "extractFirstName")
     PetGroomerViewResponse toGroomerViewResponse(Pet pet);
+
+    @Named("extractFirstName")
+    default String extractFirstName(Client client) {
+        if (client == null || client.getName() == null || client.getName().isBlank()) {
+            return null;
+        }
+        return client.getName().split(" ")[0];
+    }
 }
