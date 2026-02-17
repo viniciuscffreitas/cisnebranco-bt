@@ -12,6 +12,7 @@ public interface PetMapper {
     @Mapping(source = "breed.id", target = "breedId")
     @Mapping(source = "breed.name", target = "breedName")
     @Mapping(source = "client.id", target = "clientId")
+    @Mapping(source = "client.name", target = "clientName")
     PetResponse toResponse(Pet pet);
 
     @Mapping(source = "breed.name", target = "breedName")
