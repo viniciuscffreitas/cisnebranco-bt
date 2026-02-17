@@ -92,10 +92,12 @@ public class InspectionPhotoService {
     }
 
     private InspectionPhotoResponse toResponse(InspectionPhoto photo) {
+        String filename = Paths.get(photo.getFilePath()).getFileName().toString();
+        String url = "/api/photos/" + photo.getTechnicalOs().getId() + "/" + filename;
         return new InspectionPhotoResponse(
                 photo.getId(),
                 photo.getTechnicalOs().getId(),
-                photo.getFilePath(),
+                url,
                 photo.getCaption()
         );
     }

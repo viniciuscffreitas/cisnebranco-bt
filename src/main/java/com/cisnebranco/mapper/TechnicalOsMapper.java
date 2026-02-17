@@ -1,5 +1,6 @@
 package com.cisnebranco.mapper;
 
+import com.cisnebranco.dto.response.OsServiceItemGroomerResponse;
 import com.cisnebranco.dto.response.OsServiceItemResponse;
 import com.cisnebranco.dto.response.TechnicalOsGroomerViewResponse;
 import com.cisnebranco.dto.response.TechnicalOsResponse;
@@ -18,4 +19,7 @@ public interface TechnicalOsMapper {
     @Mapping(source = "serviceType.id", target = "serviceTypeId")
     @Mapping(source = "serviceType.name", target = "serviceTypeName")
     OsServiceItemResponse toServiceItemResponse(OsServiceItem item);
+
+    @Mapping(source = "serviceType.name", target = "serviceTypeName")
+    OsServiceItemGroomerResponse toServiceItemGroomerResponse(OsServiceItem item);
 }

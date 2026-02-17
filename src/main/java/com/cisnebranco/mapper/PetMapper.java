@@ -16,5 +16,6 @@ public interface PetMapper {
     PetResponse toResponse(Pet pet);
 
     @Mapping(source = "breed.name", target = "breedName")
+    @Mapping(target = "clientFirstName", expression = "java(pet.getClient() != null ? pet.getClient().getName().split(\" \")[0] : null)")
     PetGroomerViewResponse toGroomerViewResponse(Pet pet);
 }
