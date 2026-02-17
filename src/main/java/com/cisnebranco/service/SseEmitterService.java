@@ -103,9 +103,9 @@ public class SseEmitterService {
             public void afterCommit() {
                 try {
                     sendToAll(eventName, Map.of("action", action, "id", id));
-                } catch (IOException | IllegalStateException e) {
-                    log.warn("Failed to broadcast SSE event '{}' for id {}: {}", eventName, id, e.getMessage());
                 } catch (Exception e) {
+                    // sendToAll handles IOException/IllegalStateException internally via trySend;
+                    // this catch is a final safety net for any unexpected runtime exception.
                     log.error("Unexpected error broadcasting SSE event '{}' for id {}", eventName, id, e);
                 }
             }
