@@ -17,23 +17,9 @@ jobs:
           username: vinicius
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Pull backend
             cd ~/www/cisnebranco-bt
             git pull origin main
-
-            # Pull frontend (if repo exists)
-            if [ -d ~/www/cisnebranco-web ]; then
-              cd ~/www/cisnebranco-web
-              git pull origin main
-            fi
-
-            # Build and deploy
-            cd ~/www/cisnebranco-bt
-            if [ -d ~/www/cisnebranco-web ]; then
-              docker compose --profile web up -d --build --remove-orphans
-            else
-              docker compose up -d --build --remove-orphans
-            fi
+            docker compose up -d --build --remove-orphans
             echo "Waiting for health check..."
             sleep 15
-            docker compose --profile web ps
+            docker compose ps

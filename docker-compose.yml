@@ -84,11 +84,12 @@ services:
 
   web:
     profiles: ["web"]
-    build:
-      context: ../cisnebranco-web
-      dockerfile: Dockerfile
+    image: nginx:alpine
     container_name: cisnebranco-web
     restart: unless-stopped
+    volumes:
+      - ../cisnebranco-web/build/web:/usr/share/nginx/html:ro
+      - ../cisnebranco-web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "8092:80"
     networks:
