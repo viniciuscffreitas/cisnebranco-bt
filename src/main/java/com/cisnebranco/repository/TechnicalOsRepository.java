@@ -20,25 +20,25 @@ import java.util.Optional;
 
 public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long>, JpaSpecificationExecutor<TechnicalOs> {
 
-    @EntityGraph(attributePaths = {"pet", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
     Page<TechnicalOs> findAll(Specification<TechnicalOs> spec, Pageable pageable);
 
     @Query("SELECT os FROM TechnicalOs os JOIN FETCH os.pet p JOIN FETCH p.client WHERE os.id = :id")
     Optional<TechnicalOs> findByIdWithPetAndClient(@Param("id") Long id);
 
-    @EntityGraph(attributePaths = {"pet", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
     @Query("SELECT os FROM TechnicalOs os")
     List<TechnicalOs> findAllWithDetails();
 
-    @EntityGraph(attributePaths = {"pet", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
     @Query("SELECT os FROM TechnicalOs os")
     Page<TechnicalOs> findAllWithDetails(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"pet", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
     @Query("SELECT os FROM TechnicalOs os WHERE os.groomer.id = :groomerId")
     List<TechnicalOs> findByGroomerIdWithDetails(@Param("groomerId") Long groomerId);
 
-    @EntityGraph(attributePaths = {"pet", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
     @Query("SELECT os FROM TechnicalOs os WHERE os.groomer.id = :groomerId")
     Page<TechnicalOs> findByGroomerIdWithDetails(@Param("groomerId") Long groomerId, Pageable pageable);
 
