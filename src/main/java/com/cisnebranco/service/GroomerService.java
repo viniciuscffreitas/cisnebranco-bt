@@ -7,17 +7,23 @@ import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.GroomerMapper;
 import com.cisnebranco.repository.GroomerRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GroomerService {
 
     private final GroomerRepository groomerRepository;
     private final GroomerMapper groomerMapper;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional(readOnly = true)
     public List<GroomerResponse> findAll() {
@@ -41,13 +47,16 @@ public class GroomerService {
     @Transactional
     public GroomerResponse create(GroomerRequest request) {
         Groomer groomer = groomerMapper.toEntity(request);
-        return groomerMapper.toResponse(groomerRepository.save(groomer));
+        Groomer saved = groomerRepository.save(groomer);
+        broadcastEvent("groomer-changed", "created", saved.getId());
+        return groomerMapper.toResponse(saved);
     }
 
     @Transactional
     public GroomerResponse update(Long id, GroomerRequest request) {
         Groomer groomer = findEntityById(id);
         groomerMapper.updateEntity(request, groomer);
+        broadcastEvent("groomer-changed", "updated", id);
         return groomerMapper.toResponse(groomerRepository.save(groomer));
     }
 
@@ -56,10 +65,24 @@ public class GroomerService {
         Groomer groomer = findEntityById(id);
         groomer.setActive(false);
         groomerRepository.save(groomer);
+        broadcastEvent("groomer-changed", "deactivated", id);
     }
 
     private Groomer findEntityById(Long id) {
         return groomerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Groomer", id));
+    }
+
+    private void broadcastEvent(String eventName, String action, Long id) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    sseEmitterService.sendToAll(eventName, Map.of("action", action, "id", id));
+                } catch (Exception e) {
+                    log.warn("Failed to broadcast SSE event '{}' for id {}", eventName, id, e);
+                }
+            }
+        });
     }
 }

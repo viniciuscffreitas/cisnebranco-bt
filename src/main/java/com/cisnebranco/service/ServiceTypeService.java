@@ -7,17 +7,23 @@ import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.ServiceTypeMapper;
 import com.cisnebranco.repository.ServiceTypeRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ServiceTypeService {
 
     private final ServiceTypeRepository serviceTypeRepository;
     private final ServiceTypeMapper serviceTypeMapper;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional(readOnly = true)
     public List<ServiceTypeResponse> findAll() {
@@ -34,13 +40,16 @@ public class ServiceTypeService {
     @Transactional
     public ServiceTypeResponse create(ServiceTypeRequest request) {
         ServiceType serviceType = serviceTypeMapper.toEntity(request);
-        return serviceTypeMapper.toResponse(serviceTypeRepository.save(serviceType));
+        ServiceType saved = serviceTypeRepository.save(serviceType);
+        broadcastEvent("service-type-changed", "created", saved.getId());
+        return serviceTypeMapper.toResponse(saved);
     }
 
     @Transactional
     public ServiceTypeResponse update(Long id, ServiceTypeRequest request) {
         ServiceType serviceType = findEntityById(id);
         serviceTypeMapper.updateEntity(request, serviceType);
+        broadcastEvent("service-type-changed", "updated", id);
         return serviceTypeMapper.toResponse(serviceTypeRepository.save(serviceType));
     }
 
@@ -49,6 +58,7 @@ public class ServiceTypeService {
         ServiceType serviceType = findEntityById(id);
         serviceType.setActive(false);
         serviceTypeRepository.save(serviceType);
+        broadcastEvent("service-type-changed", "deactivated", id);
     }
 
     private ServiceType findActiveEntityById(Long id) {
@@ -59,5 +69,18 @@ public class ServiceTypeService {
     private ServiceType findEntityById(Long id) {
         return serviceTypeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ServiceType", id));
+    }
+
+    private void broadcastEvent(String eventName, String action, Long id) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    sseEmitterService.sendToAll(eventName, Map.of("action", action, "id", id));
+                } catch (Exception e) {
+                    log.warn("Failed to broadcast SSE event '{}' for id {}", eventName, id, e);
+                }
+            }
+        });
     }
 }
