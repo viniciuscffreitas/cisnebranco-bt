@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @Slf4j
@@ -17,8 +18,9 @@ public class SseEmitterService {
     private static final long EMITTER_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(30);
 
     private final Map<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
+    private final AtomicLong eventIdCounter = new AtomicLong(0);
 
-    public SseEmitter createEmitter(Long userId) {
+    public SseEmitter createEmitter(Long userId, boolean isReconnect) {
         SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
 
         emitter.onCompletion(() -> {
@@ -43,8 +45,9 @@ public class SseEmitterService {
 
         try {
             emitter.send(SseEmitter.event()
+                    .id(String.valueOf(eventIdCounter.incrementAndGet()))
                     .name("connected")
-                    .data("Connected to notifications stream"));
+                    .data(Map.of("reconnect", isReconnect)));
         } catch (IOException e) {
             log.warn("Failed to send initial SSE event for user {}, removing emitter", userId, e);
             emitters.remove(userId, emitter);
@@ -67,7 +70,10 @@ public class SseEmitterService {
 
     private void trySend(Long userId, SseEmitter emitter, String eventName, Object data) {
         try {
-            emitter.send(SseEmitter.event().name(eventName).data(data));
+            emitter.send(SseEmitter.event()
+                    .id(String.valueOf(eventIdCounter.incrementAndGet()))
+                    .name(eventName)
+                    .data(data));
         } catch (IOException e) {
             log.warn("Failed to send SSE event '{}' to user {}, removing emitter", eventName, userId, e);
             emitters.remove(userId, emitter);

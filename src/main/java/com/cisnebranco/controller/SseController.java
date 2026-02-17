@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -24,8 +25,15 @@ public class SseController {
 
     @Operation(summary = "Stream real-time notifications")
     @GetMapping(value = "/notifications", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamNotifications(@AuthenticationPrincipal UserPrincipal principal) {
-        log.info("SSE connection opened for user: {} (id: {})", principal.getUsername(), principal.getId());
-        return sseEmitterService.createEmitter(principal.getId());
+    public SseEmitter streamNotifications(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) {
+        boolean isReconnect = lastEventId != null;
+        if (isReconnect) {
+            log.info("SSE reconnection for user: {} (id: {}), last event: {}", principal.getUsername(), principal.getId(), lastEventId);
+        } else {
+            log.info("SSE connection opened for user: {} (id: {})", principal.getUsername(), principal.getId());
+        }
+        return sseEmitterService.createEmitter(principal.getId(), isReconnect);
     }
 }
