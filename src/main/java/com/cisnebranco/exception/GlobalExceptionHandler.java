@@ -1,8 +1,8 @@
 package com.cisnebranco.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -100,9 +100,12 @@ public class GlobalExceptionHandler {
                 .body(new ApiError(409, "Data integrity violation: operation conflicts with existing data"));
     }
 
-    @ExceptionHandler(PessimisticLockingFailureException.class)
-    public ResponseEntity<ApiError> handleLockConflict(PessimisticLockingFailureException ex) {
-        log.warn("Pessimistic lock contention — returning 409", ex);
+    // Covers PessimisticLockingFailureException, CannotAcquireLockException,
+    // DeadlockLoserDataAccessException, CannotSerializeTransactionException, and
+    // OptimisticLockingFailureException — all concurrency conflicts should prompt a client retry.
+    @ExceptionHandler(ConcurrencyFailureException.class)
+    public ResponseEntity<ApiError> handleConcurrencyConflict(ConcurrencyFailureException ex) {
+        log.warn("Concurrency conflict — returning 409", ex);
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiError(409, "Este registro está sendo alterado por outro usuário. Aguarde um momento e tente novamente."));
     }
