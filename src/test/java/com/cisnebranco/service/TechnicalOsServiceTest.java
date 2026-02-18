@@ -344,14 +344,39 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
     }
 
     @Test
-    void adjustServiceItemPrice_wrongStatus_throws() {
+    void adjustServiceItemPrice_waitingStatus_succeeds() {
         Long osId = createOsInStatus(OsStatus.WAITING);
+        Long itemId = osService.findById(osId).serviceItems().get(0).id();
+
+        // BANHO R$50 → R$60; commission 40% = R$24
+        TechnicalOsResponse result = osService.adjustServiceItemPrice(osId, itemId,
+                new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null));
+
+        assertThat(result.serviceItems().get(0).lockedPrice()).isEqualByComparingTo("60.00");
+        assertThat(result.totalPrice()).isEqualByComparingTo("60.00");
+        assertThat(result.serviceItems().get(0).commissionValue()).isEqualByComparingTo("24.00");
+    }
+
+    @Test
+    void adjustServiceItemPrice_readyStatus_throws() {
+        Long osId = createOsInStatus(OsStatus.READY);
         Long itemId = osService.findById(osId).serviceItems().get(0).id();
 
         assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId, itemId,
                 new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null)))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("em andamento");
+                .hasMessageContaining("conclusão do serviço");
+    }
+
+    @Test
+    void adjustServiceItemPrice_deliveredStatus_throws() {
+        Long osId = createOsInStatus(OsStatus.DELIVERED);
+        Long itemId = osService.findById(osId).serviceItems().get(0).id();
+
+        assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId, itemId,
+                new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("conclusão do serviço");
     }
 
     @Test
@@ -391,6 +416,16 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         }
         osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.IN_PROGRESS));
         if (targetStatus == OsStatus.IN_PROGRESS) {
+            return osId;
+        }
+        addPhotos(osId, 3);
+        addHealthChecklist(osId);
+        osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.READY));
+        if (targetStatus == OsStatus.READY) {
+            return osId;
+        }
+        osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.DELIVERED));
+        if (targetStatus == OsStatus.DELIVERED) {
             return osId;
         }
         throw new IllegalArgumentException("Unsupported target status: " + targetStatus);
