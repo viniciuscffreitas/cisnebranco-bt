@@ -1,6 +1,7 @@
 package com.cisnebranco.service;
 
 import com.cisnebranco.BaseIntegrationTest;
+import com.cisnebranco.dto.request.AdjustServiceItemPriceRequest;
 import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.request.OsStatusUpdateRequest;
 import com.cisnebranco.dto.response.TechnicalOsResponse;
@@ -290,6 +291,88 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         TechnicalOsResponse result = osService.assignGroomer(osId, newGroomer.getId());
 
         assertThat(result.groomer().name()).isEqualTo("New Groomer");
+    }
+
+    // --- Price Adjustment ---
+
+    @Test
+    void adjustServiceItemPrice_happyPath_updatesTotalsAndItem() {
+        TechnicalOsResponse os = osService.checkIn(new CheckInRequest(
+                testPet.getId(), testGroomer.getId(),
+                List.of(banhoService.getId(), tosaTesouraService.getId()), null));
+        Long osId = os.id();
+        osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.IN_PROGRESS));
+
+        Long banhoItemId = os.serviceItems().stream()
+                .filter(i -> i.serviceTypeId().equals(banhoService.getId()))
+                .findFirst().orElseThrow().id();
+
+        // Increase BANHO from R$50 to R$70 (matted coat reason)
+        TechnicalOsResponse result = osService.adjustServiceItemPrice(osId, banhoItemId,
+                new AdjustServiceItemPriceRequest(new BigDecimal("70.00"), "Pelagem embaraçada"));
+
+        // BANHO R$70 + TOSA_TESOURA R$80 = R$150
+        assertThat(result.totalPrice()).isEqualByComparingTo("150.00");
+        // BANHO 40%*R$70=R$28 + TOSA_TESOURA 50%*R$80=R$40 = R$68
+        assertThat(result.totalCommission()).isEqualByComparingTo("68.00");
+        assertThat(result.serviceItems()).anySatisfy(item -> {
+            assertThat(item.serviceTypeId()).isEqualTo(banhoService.getId());
+            assertThat(item.lockedPrice()).isEqualByComparingTo("70.00");
+            assertThat(item.commissionValue()).isEqualByComparingTo("28.00");
+        });
+    }
+
+    @Test
+    void adjustServiceItemPrice_priceEqualToBase_isAccepted() {
+        Long osId = createOsInStatus(OsStatus.IN_PROGRESS);
+        Long itemId = osService.findById(osId).serviceItems().get(0).id();
+
+        assertThatCode(() -> osService.adjustServiceItemPrice(osId, itemId,
+                new AdjustServiceItemPriceRequest(new BigDecimal("50.00"), null)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void adjustServiceItemPrice_belowBasePrice_throws() {
+        Long osId = createOsInStatus(OsStatus.IN_PROGRESS);
+        Long itemId = osService.findById(osId).serviceItems().get(0).id();
+
+        assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId, itemId,
+                new AdjustServiceItemPriceRequest(new BigDecimal("49.99"), null)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("preço base");
+    }
+
+    @Test
+    void adjustServiceItemPrice_wrongStatus_throws() {
+        Long osId = createOsInStatus(OsStatus.WAITING);
+        Long itemId = osService.findById(osId).serviceItems().get(0).id();
+
+        assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId, itemId,
+                new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("IN_PROGRESS");
+    }
+
+    @Test
+    void adjustServiceItemPrice_itemFromDifferentOs_throws() {
+        Long osId1 = createOsInStatus(OsStatus.IN_PROGRESS);
+        Long osId2 = createOsInStatus(OsStatus.IN_PROGRESS);
+
+        Long itemFromOs2 = osService.findById(osId2).serviceItems().get(0).id();
+
+        assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId1, itemFromOs2,
+                new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null)))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void adjustServiceItemPrice_nonExistentItem_throws() {
+        Long osId = createOsInStatus(OsStatus.IN_PROGRESS);
+
+        assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId, 99999L,
+                new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null)))
+                .isInstanceOf(AccessDeniedException.class);
     }
 
     // --- Helpers ---

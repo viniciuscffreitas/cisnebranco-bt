@@ -21,7 +21,6 @@ import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.TechnicalOsMapper;
 import com.cisnebranco.repository.GroomerRepository;
 import com.cisnebranco.repository.InspectionPhotoRepository;
-import com.cisnebranco.repository.OsServiceItemRepository;
 import com.cisnebranco.repository.PetRepository;
 import com.cisnebranco.repository.PricingMatrixRepository;
 import com.cisnebranco.repository.ServiceTypeRepository;
@@ -63,7 +62,6 @@ public class TechnicalOsService {
     private final ServiceTypeRepository serviceTypeRepository;
     private final PricingMatrixRepository pricingMatrixRepository;
     private final InspectionPhotoRepository photoRepository;
-    private final OsServiceItemRepository serviceItemRepository;
     private final TechnicalOsMapper osMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
@@ -229,28 +227,41 @@ public class TechnicalOsService {
 
     @Transactional
     public TechnicalOsResponse adjustServiceItemPrice(Long osId, Long itemId, AdjustServiceItemPriceRequest request) {
-        TechnicalOs os = findEntityById(osId);
+        // Pessimistic write lock prevents concurrent price updates from producing stale totals
+        TechnicalOs os = osRepository.findByIdForUpdate(osId)
+                .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
 
-        OsServiceItem item = serviceItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResourceNotFoundException("OsServiceItem", itemId));
-
-        if (!item.getTechnicalOs().getId().equals(osId)) {
-            throw new BusinessException("Service item does not belong to OS #" + osId);
+        // [C2] Guard: price adjustment is only meaningful while the service is in progress
+        if (os.getStatus() != OsStatus.IN_PROGRESS) {
+            throw new BusinessException(
+                    "Ajuste de preço só é permitido com OS em andamento (status atual: " + os.getStatus() + ")");
         }
 
+        // Find item within the OS collection — mutating in-place ensures the
+        // subsequent total recalculation stream sees the updated lockedPrice
+        OsServiceItem item = os.getServiceItems().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.warn("Attempted to adjust item {} which does not belong to OS {}", itemId, osId);
+                    return new AccessDeniedException("Service item does not belong to OS #" + osId);
+                });
+
         if (request.adjustedPrice().compareTo(item.getLockedPrice()) < 0) {
-            throw new BusinessException("Adjusted price cannot be lower than the base price (R$ "
+            throw new BusinessException("O preço ajustado não pode ser menor que o preço base (R$ "
                     + item.getLockedPrice() + ")");
         }
 
+        BigDecimal originalPrice = item.getLockedPrice();
         BigDecimal newCommission = request.adjustedPrice()
                 .multiply(item.getLockedCommissionRate())
                 .setScale(2, RoundingMode.HALF_UP);
 
+        // Mutate in-place — Hibernate dirty-checking cascades the save via CascadeType.ALL
         item.setLockedPrice(request.adjustedPrice());
         item.setCommissionValue(newCommission);
 
-        // Recalculate totals from all items to avoid lost-update on concurrent calls
+        // Recalculate from the (now-mutated) collection — no stale reference possible
         BigDecimal newTotal = os.getServiceItems().stream()
                 .map(OsServiceItem::getLockedPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -261,10 +272,34 @@ public class TechnicalOsService {
         os.setTotalPrice(newTotal);
         os.setTotalCommission(newTotalCommission);
 
-        auditService.log("PRICE_ADJUSTED", "OsServiceItem", itemId,
-                "OS #" + osId + " item adjusted to R$ " + request.adjustedPrice());
+        // [I2] Save first, then audit — REQUIRES_NEW in AuditService would otherwise
+        // commit an audit entry even if the save rolls back
+        TechnicalOsResponse response = osMapper.toResponse(osRepository.save(os));
 
-        return osMapper.toResponse(osRepository.save(os));
+        String auditDetail = "OS #" + osId + " item #" + itemId
+                + " adjusted from R$ " + originalPrice + " to R$ " + request.adjustedPrice()
+                + (request.reason() != null && !request.reason().isBlank()
+                        ? " — motivo: " + request.reason() : "");
+        auditService.log("PRICE_ADJUSTED", "OsServiceItem", itemId, auditDetail);
+
+        // [C3] SSE broadcast after commit — consistent with updateStatus pattern
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    sseEmitterService.sendToAll("os-price-adjusted", Map.of(
+                            "osId", osId,
+                            "itemId", itemId,
+                            "adjustedPrice", request.adjustedPrice().toPlainString(),
+                            "totalPrice", response.totalPrice().toPlainString()
+                    ));
+                } catch (Exception e) {
+                    log.warn("Failed to broadcast SSE event for price adjustment on OS {}", osId, e);
+                }
+            }
+        });
+
+        return response;
     }
 
     private void validateReadyRequirements(TechnicalOs os) {
