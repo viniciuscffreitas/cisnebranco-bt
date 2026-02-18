@@ -43,6 +43,7 @@ public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long>,
     Page<TechnicalOs> findByGroomerIdWithDetails(@Param("groomerId") Long groomerId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
     @Query("SELECT os FROM TechnicalOs os WHERE os.id = :id")
     Optional<TechnicalOs> findByIdForUpdate(@Param("id") Long id);
 

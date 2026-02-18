@@ -2,6 +2,7 @@ package com.cisnebranco.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -96,6 +97,13 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiError(409, "Data integrity violation: operation conflicts with existing data"));
+    }
+
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    public ResponseEntity<ApiError> handleLockConflict(PessimisticLockingFailureException ex) {
+        log.warn("Pessimistic lock contention: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiError(409, "Este registro está sendo alterado por outro usuário. Aguarde um momento e tente novamente."));
     }
 
     @ExceptionHandler(Exception.class)

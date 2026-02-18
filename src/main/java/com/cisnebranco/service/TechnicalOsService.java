@@ -160,7 +160,7 @@ public class TechnicalOsService {
                             "petName", petName
                     ));
                 } catch (Exception e) {
-                    log.warn("Failed to broadcast SSE event for OS {}", osId, e);
+                    log.error("Failed to broadcast SSE event for OS {}", osId, e);
                 }
             }
         });
@@ -295,7 +295,7 @@ public class TechnicalOsService {
                             "totalPrice", response.totalPrice().toPlainString()
                     ));
                 } catch (Exception e) {
-                    log.warn("Failed to broadcast SSE event for price adjustment on OS {}", osId, e);
+                    log.error("Failed to broadcast SSE event for price adjustment on OS {} item {}", osId, itemId, e);
                 }
             }
         });
