@@ -231,10 +231,10 @@ public class TechnicalOsService {
         TechnicalOs os = osRepository.findByIdForUpdate(osId)
                 .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
 
-        // [C2] Guard: price adjustment is only meaningful while the service is in progress
-        if (os.getStatus() != OsStatus.IN_PROGRESS) {
+        // [C2] Guard: price adjustment is blocked only after delivery
+        if (os.getStatus() == OsStatus.DELIVERED) {
             throw new BusinessException(
-                    "Ajuste de preço só é permitido com OS em andamento (status atual: " + os.getStatus() + ")");
+                    "Ajuste de preço não é permitido após entrega (status atual: " + os.getStatus() + ")");
         }
 
         // Find item within the OS collection — mutating in-place ensures the
