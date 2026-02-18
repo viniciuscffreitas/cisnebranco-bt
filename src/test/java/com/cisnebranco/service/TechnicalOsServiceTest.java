@@ -348,10 +348,24 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         Long osId = createOsInStatus(OsStatus.WAITING);
         Long itemId = osService.findById(osId).serviceItems().get(0).id();
 
+        // BANHO R$50 → R$60; commission 40% = R$24
         TechnicalOsResponse result = osService.adjustServiceItemPrice(osId, itemId,
                 new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null));
 
         assertThat(result.serviceItems().get(0).lockedPrice()).isEqualByComparingTo("60.00");
+        assertThat(result.totalPrice()).isEqualByComparingTo("60.00");
+        assertThat(result.serviceItems().get(0).commissionValue()).isEqualByComparingTo("24.00");
+    }
+
+    @Test
+    void adjustServiceItemPrice_readyStatus_throws() {
+        Long osId = createOsInStatus(OsStatus.READY);
+        Long itemId = osService.findById(osId).serviceItems().get(0).id();
+
+        assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId, itemId,
+                new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("conclusão do serviço");
     }
 
     @Test
@@ -362,7 +376,7 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId, itemId,
                 new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null)))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("após entrega");
+                .hasMessageContaining("conclusão do serviço");
     }
 
     @Test
