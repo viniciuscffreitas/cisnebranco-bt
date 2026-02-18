@@ -21,6 +21,6 @@ public interface InspectionPhotoMapper {
             return null;
         }
         String filename = Paths.get(photo.getFilePath()).getFileName().toString();
-        return "/api/photos/" + photo.getTechnicalOs().getId() + "/" + filename;
+        return "/photos/" + photo.getTechnicalOs().getId() + "/" + filename;
     }
 }
