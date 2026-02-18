@@ -1,5 +1,6 @@
 package com.cisnebranco.controller;
 
+import com.cisnebranco.dto.request.AdjustServiceItemPriceRequest;
 import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.request.HealthChecklistRequest;
 import com.cisnebranco.dto.request.OsStatusUpdateRequest;
@@ -110,6 +111,19 @@ public class TechnicalOsController {
     @GetMapping("/{id}/photos")
     public ResponseEntity<List<InspectionPhotoResponse>> getPhotos(@PathVariable Long id) {
         return ResponseEntity.ok(photoService.findByOs(id));
+    }
+
+    // --- Service item price adjustment ---
+
+    @Operation(summary = "Adjust the price of a service item (increase only)")
+    @PatchMapping("/{osId}/services/{itemId}/price")
+    public ResponseEntity<TechnicalOsResponse> adjustServiceItemPrice(
+            @PathVariable Long osId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody AdjustServiceItemPriceRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        osService.enforceAccess(osId, principal);
+        return ResponseEntity.ok(osService.adjustServiceItemPrice(osId, itemId, request));
     }
 
     // --- Health checklist ---

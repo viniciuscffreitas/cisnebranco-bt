@@ -1,5 +1,6 @@
 package com.cisnebranco.service;
 
+import com.cisnebranco.dto.request.AdjustServiceItemPriceRequest;
 import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.request.OsStatusUpdateRequest;
 import com.cisnebranco.dto.request.TechnicalOsFilterRequest;
@@ -20,6 +21,7 @@ import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.TechnicalOsMapper;
 import com.cisnebranco.repository.GroomerRepository;
 import com.cisnebranco.repository.InspectionPhotoRepository;
+import com.cisnebranco.repository.OsServiceItemRepository;
 import com.cisnebranco.repository.PetRepository;
 import com.cisnebranco.repository.PricingMatrixRepository;
 import com.cisnebranco.repository.ServiceTypeRepository;
@@ -61,6 +63,7 @@ public class TechnicalOsService {
     private final ServiceTypeRepository serviceTypeRepository;
     private final PricingMatrixRepository pricingMatrixRepository;
     private final InspectionPhotoRepository photoRepository;
+    private final OsServiceItemRepository serviceItemRepository;
     private final TechnicalOsMapper osMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
@@ -222,6 +225,46 @@ public class TechnicalOsService {
                 throw new AccessDeniedException("Groomer can only manage their own service orders");
             }
         }
+    }
+
+    @Transactional
+    public TechnicalOsResponse adjustServiceItemPrice(Long osId, Long itemId, AdjustServiceItemPriceRequest request) {
+        TechnicalOs os = findEntityById(osId);
+
+        OsServiceItem item = serviceItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("OsServiceItem", itemId));
+
+        if (!item.getTechnicalOs().getId().equals(osId)) {
+            throw new BusinessException("Service item does not belong to OS #" + osId);
+        }
+
+        if (request.adjustedPrice().compareTo(item.getLockedPrice()) < 0) {
+            throw new BusinessException("Adjusted price cannot be lower than the base price (R$ "
+                    + item.getLockedPrice() + ")");
+        }
+
+        BigDecimal newCommission = request.adjustedPrice()
+                .multiply(item.getLockedCommissionRate())
+                .setScale(2, RoundingMode.HALF_UP);
+
+        item.setLockedPrice(request.adjustedPrice());
+        item.setCommissionValue(newCommission);
+
+        // Recalculate totals from all items to avoid lost-update on concurrent calls
+        BigDecimal newTotal = os.getServiceItems().stream()
+                .map(OsServiceItem::getLockedPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal newTotalCommission = os.getServiceItems().stream()
+                .map(OsServiceItem::getCommissionValue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        os.setTotalPrice(newTotal);
+        os.setTotalCommission(newTotalCommission);
+
+        auditService.log("PRICE_ADJUSTED", "OsServiceItem", itemId,
+                "OS #" + osId + " item adjusted to R$ " + request.adjustedPrice());
+
+        return osMapper.toResponse(osRepository.save(os));
     }
 
     private void validateReadyRequirements(TechnicalOs os) {
