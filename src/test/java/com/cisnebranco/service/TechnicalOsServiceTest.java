@@ -351,7 +351,7 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId, itemId,
                 new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null)))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("IN_PROGRESS");
+                .hasMessageContaining("em andamento");
     }
 
     @Test
