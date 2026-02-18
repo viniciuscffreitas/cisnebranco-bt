@@ -160,7 +160,10 @@ public class TechnicalOsService {
                             "petName", petName
                     ));
                 } catch (Exception e) {
-                    log.warn("Failed to broadcast SSE event for OS {}", osId, e);
+                    // SSE broadcast is best-effort; the transaction has already committed.
+                    // Failure here means connected clients won't receive the real-time update
+                    // but data is consistent in the DB.
+                    log.error("Failed to broadcast SSE event for OS {}", osId, e);
                 }
             }
         });
@@ -295,7 +298,10 @@ public class TechnicalOsService {
                             "totalPrice", response.totalPrice().toPlainString()
                     ));
                 } catch (Exception e) {
-                    log.warn("Failed to broadcast SSE event for price adjustment on OS {}", osId, e);
+                    // SSE broadcast is best-effort; the transaction has already committed.
+                    // Failure here means connected clients won't receive the real-time update
+                    // but data is consistent in the DB.
+                    log.error("Failed to broadcast SSE event for price adjustment on OS {} item {}", osId, itemId, e);
                 }
             }
         });
