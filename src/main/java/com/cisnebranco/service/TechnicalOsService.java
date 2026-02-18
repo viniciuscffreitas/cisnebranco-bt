@@ -1,5 +1,6 @@
 package com.cisnebranco.service;
 
+import com.cisnebranco.dto.request.AdjustServiceItemPriceRequest;
 import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.request.OsStatusUpdateRequest;
 import com.cisnebranco.dto.request.TechnicalOsFilterRequest;
@@ -222,6 +223,83 @@ public class TechnicalOsService {
                 throw new AccessDeniedException("Groomer can only manage their own service orders");
             }
         }
+    }
+
+    @Transactional
+    public TechnicalOsResponse adjustServiceItemPrice(Long osId, Long itemId, AdjustServiceItemPriceRequest request) {
+        // Pessimistic write lock prevents concurrent price updates from producing stale totals
+        TechnicalOs os = osRepository.findByIdForUpdate(osId)
+                .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
+
+        // [C2] Guard: price adjustment is only meaningful while the service is in progress
+        if (os.getStatus() != OsStatus.IN_PROGRESS) {
+            throw new BusinessException(
+                    "Ajuste de preço só é permitido com OS em andamento (status atual: " + os.getStatus() + ")");
+        }
+
+        // Find item within the OS collection — mutating in-place ensures the
+        // subsequent total recalculation stream sees the updated lockedPrice
+        OsServiceItem item = os.getServiceItems().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.warn("Attempted to adjust item {} which does not belong to OS {}", itemId, osId);
+                    return new AccessDeniedException("Service item does not belong to OS #" + osId);
+                });
+
+        if (request.adjustedPrice().compareTo(item.getLockedPrice()) < 0) {
+            throw new BusinessException("O preço ajustado não pode ser menor que o preço base (R$ "
+                    + item.getLockedPrice() + ")");
+        }
+
+        BigDecimal originalPrice = item.getLockedPrice();
+        BigDecimal newCommission = request.adjustedPrice()
+                .multiply(item.getLockedCommissionRate())
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // Mutate in-place — Hibernate dirty-checking cascades the save via CascadeType.ALL
+        item.setLockedPrice(request.adjustedPrice());
+        item.setCommissionValue(newCommission);
+
+        // Recalculate from the (now-mutated) collection — no stale reference possible
+        BigDecimal newTotal = os.getServiceItems().stream()
+                .map(OsServiceItem::getLockedPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal newTotalCommission = os.getServiceItems().stream()
+                .map(OsServiceItem::getCommissionValue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        os.setTotalPrice(newTotal);
+        os.setTotalCommission(newTotalCommission);
+
+        // [I2] Save first, then audit — REQUIRES_NEW in AuditService would otherwise
+        // commit an audit entry even if the save rolls back
+        TechnicalOsResponse response = osMapper.toResponse(osRepository.save(os));
+
+        String auditDetail = "OS #" + osId + " item #" + itemId
+                + " adjusted from R$ " + originalPrice + " to R$ " + request.adjustedPrice()
+                + (request.reason() != null && !request.reason().isBlank()
+                        ? " — motivo: " + request.reason() : "");
+        auditService.log("PRICE_ADJUSTED", "OsServiceItem", itemId, auditDetail);
+
+        // [C3] SSE broadcast after commit — consistent with updateStatus pattern
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    sseEmitterService.sendToAll("os-price-adjusted", Map.of(
+                            "osId", osId,
+                            "itemId", itemId,
+                            "adjustedPrice", request.adjustedPrice().toPlainString(),
+                            "totalPrice", response.totalPrice().toPlainString()
+                    ));
+                } catch (Exception e) {
+                    log.warn("Failed to broadcast SSE event for price adjustment on OS {}", osId, e);
+                }
+            }
+        });
+
+        return response;
     }
 
     private void validateReadyRequirements(TechnicalOs os) {
