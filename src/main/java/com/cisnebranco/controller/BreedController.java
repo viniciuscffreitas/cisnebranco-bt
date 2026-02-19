@@ -2,6 +2,8 @@ package com.cisnebranco.controller;
 
 import com.cisnebranco.dto.request.BreedRequest;
 import com.cisnebranco.dto.response.BreedResponse;
+import com.cisnebranco.dto.response.BreedServicePriceResponse;
+import com.cisnebranco.service.BreedPriceService;
 import com.cisnebranco.service.BreedService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +23,7 @@ import java.util.List;
 public class BreedController {
 
     private final BreedService breedService;
+    private final BreedPriceService breedPriceService;
 
     @Operation(summary = "List all breeds")
     @GetMapping
@@ -32,6 +35,12 @@ public class BreedController {
     @GetMapping("/{id}")
     public ResponseEntity<BreedResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(breedService.findById(id));
+    }
+
+    @Operation(summary = "Get available service prices for a breed")
+    @GetMapping("/{id}/service-prices")
+    public ResponseEntity<List<BreedServicePriceResponse>> getServicePrices(@PathVariable Long id) {
+        return ResponseEntity.ok(breedPriceService.getServicePricesForBreed(id));
     }
 
     @Operation(summary = "Create a new breed")
