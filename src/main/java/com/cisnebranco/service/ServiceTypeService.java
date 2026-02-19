@@ -3,6 +3,7 @@ package com.cisnebranco.service;
 import com.cisnebranco.dto.request.ServiceTypeRequest;
 import com.cisnebranco.dto.response.ServiceTypeResponse;
 import com.cisnebranco.entity.ServiceType;
+import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.ServiceTypeMapper;
 import com.cisnebranco.repository.ServiceTypeRepository;
@@ -39,6 +40,12 @@ public class ServiceTypeService {
         String code = (request.code() != null && !request.code().isBlank())
                 ? request.code().trim().toUpperCase()
                 : generateCode(request.name());
+        if (code.isEmpty()) {
+            throw new BusinessException("Não foi possível gerar um código a partir do nome: " + request.name());
+        }
+        serviceTypeRepository.findByCode(code).ifPresent(existing -> {
+            throw new BusinessException("Já existe um tipo de serviço com o código: " + code);
+        });
         serviceType.setCode(code);
         ServiceType saved = serviceTypeRepository.save(serviceType);
         sseEmitterService.broadcastAfterCommit("service-type-changed", "created", saved.getId());
