@@ -2,7 +2,15 @@
 -- Generated from Plan2 (Tabela de Valores Banho e Tosa 2025)
 
 -- 1. Add unique constraint to breeds if not exists
-ALTER TABLE breeds ADD CONSTRAINT IF NOT EXISTS uq_breed_name_species UNIQUE (name, species);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'uq_breed_name_species' AND table_name = 'breeds'
+    ) THEN
+        ALTER TABLE breeds ADD CONSTRAINT uq_breed_name_species UNIQUE (name, species);
+    END IF;
+END $$;
 
 -- 2. New service types (upsert — DO UPDATE ensures values stay in sync)
 INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('BANHO_TOSA_HIGIENICA', 'Banho e Tosa Higiênica', 0.4, 45, 0.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
