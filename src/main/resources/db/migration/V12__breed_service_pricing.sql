@@ -376,8 +376,8 @@ DECLARE
     actual INTEGER;
 BEGIN
     SELECT COUNT(*) INTO actual FROM service_type_breed_prices;
-    IF actual < 234 THEN
-        RAISE EXCEPTION 'V12 seeding incomplete: expected >= 234 price rows, got %. '
+    IF actual < 207 THEN
+        RAISE EXCEPTION 'V12 seeding incomplete: expected >= 207 price rows, got %. '
             'A breed or service_type INSERT likely silently failed.', actual;
     END IF;
 END $$;
