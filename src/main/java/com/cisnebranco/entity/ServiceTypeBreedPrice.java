@@ -1,6 +1,7 @@
 package com.cisnebranco.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMin;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,6 +27,7 @@ public class ServiceTypeBreedPrice extends BaseEntity {
     @JoinColumn(name = "breed_id", nullable = false)
     private Breed breed;
 
+    @DecimalMin("0.01")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 }

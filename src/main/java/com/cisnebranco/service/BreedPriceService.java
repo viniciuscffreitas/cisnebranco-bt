@@ -24,6 +24,7 @@ public class BreedPriceService {
         }
         return priceRepository.findByBreedId(breedId).stream()
                 .map(p -> new BreedServicePriceResponse(
+                        p.getBreed().getId(),
                         p.getServiceType().getId(),
                         p.getServiceType().getCode(),
                         p.getServiceType().getName(),

@@ -1,91 +1,117 @@
--- V12: breed-based service pricing
--- ==============================================
+-- V12: breed-based service pricing (2025 table)
+-- Generated from Plan2 (Tabela de Valores Banho e Tosa 2025)
 
--- 1. New service types
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('BANHO_TOSA_HIGIENICA', 'Banho e Tosa Higiênica', 0.4, 45, 0.00) ON CONFLICT (code) DO NOTHING;
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('TOSA_MAQUINA', 'Tosa Máquina', 0.5, 45, 0.00) ON CONFLICT (code) DO NOTHING;
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('TOSA_RACA', 'Tosa de Raça', 0.5, 60, 0.00) ON CONFLICT (code) DO NOTHING;
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('ANTI_PULGA', 'Anti-Pulga', 0.4, 20, 20.00) ON CONFLICT (code) DO NOTHING;
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('REMOCAO', 'Remoção', 0.4, 20, 20.00) ON CONFLICT (code) DO NOTHING;
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('PATINHAS', 'Patinhas', 0.4, 10, 5.00) ON CONFLICT (code) DO NOTHING;
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('OZONIO', 'Ozônio', 0.4, 20, 20.00) ON CONFLICT (code) DO NOTHING;
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('CROMOTERAPIA', 'Cromoterapia', 0.4, 20, 20.00) ON CONFLICT (code) DO NOTHING;
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('HARMONIZACAO_FACIAL', 'Harmonização Facial', 0.4, 20, 20.00) ON CONFLICT (code) DO NOTHING;
-INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('ESCOVACAO', 'Escovação', 0.4, 15, 6.00) ON CONFLICT (code) DO NOTHING;
+-- 1. Add unique constraint to breeds if not exists
+ALTER TABLE breeds ADD CONSTRAINT IF NOT EXISTS uq_breed_name_species UNIQUE (name, species);
 
--- 2. Update base prices of existing service types
-UPDATE service_types SET base_price = 45.00 WHERE code = 'BANHO';
-UPDATE service_types SET base_price = 150.00 WHERE code = 'TOSA_TESOURA';
-UPDATE service_types SET base_price = 15.00 WHERE code = 'HIDRATACAO';
-UPDATE service_types SET base_price = 20.00 WHERE code = 'DESEMBOLO';
+-- 2. New service types (upsert — DO UPDATE ensures values stay in sync)
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('BANHO_TOSA_HIGIENICA', 'Banho e Tosa Higiênica', 0.4, 45, 0.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('TOSA_MAQUINA', 'Tosa Máquina', 0.5, 45, 0.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('TOSA_RACA', 'Tosa de Raça', 0.5, 60, 0.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('ANTI_PULGA', 'Anti-Pulga', 0.4, 20, 20.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('REMOCAO', 'Remoção', 0.4, 20, 20.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('PATINHAS', 'Patinhas', 0.4, 10, 5.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('OZONIO', 'Ozônio', 0.4, 20, 20.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('CROMOTERAPIA', 'Cromoterapia', 0.4, 20, 20.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('HARMONIZACAO_FACIAL', 'Harmonização Facial', 0.4, 20, 20.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
+INSERT INTO service_types (code, name, commission_rate, default_duration_minutes, base_price) VALUES ('ESCOVACAO', 'Escovação', 0.4, 15, 6.00) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, commission_rate = EXCLUDED.commission_rate, default_duration_minutes = EXCLUDED.default_duration_minutes, base_price = EXCLUDED.base_price;
 
--- 3. New breeds from price table
-INSERT INTO breeds (name, species) VALUES ('American Staffordshire', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Basset Hound', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Beagle', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Bernese Mountain Dog', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Bichon Frisé', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Border Collie Grande', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Border Collie Pequeno', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Boxer', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Bulldog Francês', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Bulldog Inglês', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Cavalier King Charles', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Chihuahua', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Chow Chow', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Cocker Spaniel', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Dachshund', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Dachshund Pelo Longo', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Dálmata', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Fox Terrier', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Gato Pelo Curto', 'CAT') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Gato Pelo Longo', 'CAT') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Golden Retriever Grande', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Golden Retriever Pequeno', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Husky Siberiano', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Jack Russell Terrier', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Labrador', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Lhasa Apso', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Maltês', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Pastor Belga', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Pastor Grande', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Pastor Pequeno', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Pastor Suíço', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Pintcher', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Pit Bull', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Poodle Grande', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Poodle Médio', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Poodle Pequeno', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Pug', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Rottweiler', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('SRD 15 a 20kg', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('SRD acima de 20kg', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('SRD até 10kg', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('SRD até 15kg', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Samoeda', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Schnauzer', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Scottish Terrier', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Shar-Pei', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Shih-Tzu', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Shih-Tzu Pelo Longo', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Spitz Pelo Longo', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Spitz Pequeno', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('West Highland Terrier', 'DOG') ON CONFLICT DO NOTHING;
-INSERT INTO breeds (name, species) VALUES ('Yorkshire', 'DOG') ON CONFLICT DO NOTHING;
+-- 3. Update base prices of existing service types (with existence guard)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM service_types WHERE code = 'BANHO') THEN
+        RAISE EXCEPTION 'V12: service_type BANHO not found – re-check V2 seed';
+    END IF;
+    UPDATE service_types SET base_price = 45.00 WHERE code = 'BANHO';
+END $$;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM service_types WHERE code = 'TOSA_TESOURA') THEN
+        RAISE EXCEPTION 'V12: service_type TOSA_TESOURA not found – re-check V2 seed';
+    END IF;
+    UPDATE service_types SET base_price = 150.00 WHERE code = 'TOSA_TESOURA';
+END $$;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM service_types WHERE code = 'HIDRATACAO') THEN
+        RAISE EXCEPTION 'V12: service_type HIDRATACAO not found – re-check V2 seed';
+    END IF;
+    UPDATE service_types SET base_price = 15.00 WHERE code = 'HIDRATACAO';
+END $$;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM service_types WHERE code = 'DESEMBOLO') THEN
+        RAISE EXCEPTION 'V12: service_type DESEMBOLO not found – re-check V2 seed';
+    END IF;
+    UPDATE service_types SET base_price = 20.00 WHERE code = 'DESEMBOLO';
+END $$;
 
--- 4. service_type_breed_prices junction table
+-- 4. Breeds (new + ensure existing cats are present for section 6)
+INSERT INTO breeds (name, species) VALUES ('American Staffordshire', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Basset Hound', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Beagle', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Bernese Mountain Dog', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Bichon Frisé', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Border Collie Grande', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Border Collie Pequeno', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Boxer', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Bulldog Francês', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Bulldog Inglês', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Cavalier King Charles', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Chihuahua', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Chow Chow', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Cocker Spaniel', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Dachshund', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Dachshund Pelo Longo', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Dálmata', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Fox Terrier', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Gato Pelo Curto', 'CAT') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Gato Pelo Longo', 'CAT') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Golden Retriever Grande', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Golden Retriever Pequeno', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Husky Siberiano', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Jack Russell Terrier', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Labrador', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Lhasa Apso', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Maltês', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Pastor Belga', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Pastor Grande', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Pastor Pequeno', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Pastor Suíço', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Pintcher', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Pit Bull', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Poodle Grande', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Poodle Médio', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Poodle Pequeno', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Pug', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Rottweiler', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('SRD 15 a 20kg', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('SRD acima de 20kg', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('SRD até 10kg', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('SRD até 15kg', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Samoeda', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Schnauzer', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Scottish Terrier', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Shar-Pei', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Shih-Tzu', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Shih-Tzu Pelo Longo', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Spitz Pelo Longo', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Spitz Pequeno', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('West Highland Terrier', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Yorkshire', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+
+-- 5. service_type_breed_prices junction table
 CREATE TABLE IF NOT EXISTS service_type_breed_prices (
     id              BIGSERIAL PRIMARY KEY,
     service_type_id BIGINT NOT NULL REFERENCES service_types(id),
     breed_id        BIGINT NOT NULL REFERENCES breeds(id),
-    price           NUMERIC(10, 2) NOT NULL,
+    price           NUMERIC(10, 2) NOT NULL CHECK (price > 0),
     created_at      TIMESTAMP NOT NULL DEFAULT now(),
     updated_at      TIMESTAMP NOT NULL DEFAULT now(),
     CONSTRAINT uq_service_breed UNIQUE (service_type_id, breed_id)
 );
 
--- 5. Seed breed prices from 2025 table
--- Spreadsheet breeds
+-- 6. Seed breed prices from 2025 table
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 80.00 FROM service_types st, breeds b WHERE st.code = 'BANHO' AND b.name = 'American Staffordshire' AND b.species = 'DOG' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 75.00 FROM service_types st, breeds b WHERE st.code = 'BANHO' AND b.name = 'Basset Hound' AND b.species = 'DOG' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 60.00 FROM service_types st, breeds b WHERE st.code = 'BANHO' AND b.name = 'Beagle' AND b.species = 'DOG' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
@@ -247,7 +273,7 @@ INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT 
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 90.00 FROM service_types st, breeds b WHERE st.code = 'TOSA_MAQUINA' AND b.name = 'Yorkshire' AND b.species = 'DOG' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 150.00 FROM service_types st, breeds b WHERE st.code = 'TOSA_TESOURA' AND b.name = 'Yorkshire' AND b.species = 'DOG' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
 
--- 6. Existing DB breeds (backward compat — use closest size variant prices)
+-- 7. Backward compat: existing DB breeds get prices from closest variant
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 55.00 FROM service_types st, breeds b WHERE st.code = 'BANHO' AND b.name = 'SRD' AND b.species = 'DOG' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 75.00 FROM service_types st, breeds b WHERE st.code = 'BANHO_TOSA_HIGIENICA' AND b.name = 'SRD' AND b.species = 'DOG' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 90.00 FROM service_types st, breeds b WHERE st.code = 'TOSA_MAQUINA' AND b.name = 'SRD' AND b.species = 'DOG' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
@@ -322,3 +348,15 @@ INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT 
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 140.00 FROM service_types st, breeds b WHERE st.code = 'BANHO_TOSA_HIGIENICA' AND b.name = 'Angorá' AND b.species = 'CAT' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 180.00 FROM service_types st, breeds b WHERE st.code = 'TOSA_MAQUINA' AND b.name = 'Angorá' AND b.species = 'CAT' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
 INSERT INTO service_type_breed_prices (service_type_id, breed_id, price) SELECT st.id, b.id, 220.00 FROM service_types st, breeds b WHERE st.code = 'TOSA_TESOURA' AND b.name = 'Angorá' AND b.species = 'CAT' ON CONFLICT (service_type_id, breed_id) DO UPDATE SET price = EXCLUDED.price;
+
+-- 8. Assertion: verify minimum expected price rows were seeded
+DO $$
+DECLARE
+    actual INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO actual FROM service_type_breed_prices;
+    IF actual < 234 THEN
+        RAISE EXCEPTION 'V12 seeding incomplete: expected >= 234 price rows, got %. '
+            'A breed or service_type INSERT likely silently failed.', actual;
+    END IF;
+END $$;

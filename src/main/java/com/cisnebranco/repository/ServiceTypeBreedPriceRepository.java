@@ -12,6 +12,7 @@ public interface ServiceTypeBreedPriceRepository extends JpaRepository<ServiceTy
     @Query("""
             SELECT p FROM ServiceTypeBreedPrice p
             JOIN FETCH p.serviceType st
+            JOIN FETCH p.breed
             WHERE p.breed.id = :breedId
               AND st.active = true
             ORDER BY st.name
