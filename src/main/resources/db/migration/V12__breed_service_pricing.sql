@@ -107,6 +107,19 @@ INSERT INTO breeds (name, species) VALUES ('Spitz Pelo Longo', 'DOG') ON CONFLIC
 INSERT INTO breeds (name, species) VALUES ('Spitz Pequeno', 'DOG') ON CONFLICT (name, species) DO NOTHING;
 INSERT INTO breeds (name, species) VALUES ('West Highland Terrier', 'DOG') ON CONFLICT (name, species) DO NOTHING;
 INSERT INTO breeds (name, species) VALUES ('Yorkshire', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+-- Backward-compat breed names used in section 7 (may come from V2 seed; ensure they exist on fresh DB)
+INSERT INTO breeds (name, species) VALUES ('Angorá', 'CAT') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Border Collie', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Golden Retriever', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Maine Coon', 'CAT') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Pastor Alemão', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Persa', 'CAT') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Poodle', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Shih Tzu', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Siamês', 'CAT') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('Spitz Alemão', 'DOG') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('SRD', 'CAT') ON CONFLICT (name, species) DO NOTHING;
+INSERT INTO breeds (name, species) VALUES ('SRD', 'DOG') ON CONFLICT (name, species) DO NOTHING;
 
 -- 5. service_type_breed_prices junction table
 CREATE TABLE IF NOT EXISTS service_type_breed_prices (
