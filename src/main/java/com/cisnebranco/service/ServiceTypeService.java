@@ -3,6 +3,7 @@ package com.cisnebranco.service;
 import com.cisnebranco.dto.request.ServiceTypeRequest;
 import com.cisnebranco.dto.response.ServiceTypeResponse;
 import com.cisnebranco.entity.ServiceType;
+import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.ServiceTypeMapper;
 import com.cisnebranco.repository.ServiceTypeRepository;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.util.List;
 
 @Service
@@ -35,6 +37,16 @@ public class ServiceTypeService {
     @Transactional
     public ServiceTypeResponse create(ServiceTypeRequest request) {
         ServiceType serviceType = serviceTypeMapper.toEntity(request);
+        String code = (request.code() != null && !request.code().isBlank())
+                ? request.code().trim().toUpperCase()
+                : generateCode(request.name());
+        if (code.isEmpty()) {
+            throw new BusinessException("Não foi possível gerar um código a partir do nome: " + request.name());
+        }
+        serviceTypeRepository.findByCode(code).ifPresent(existing -> {
+            throw new BusinessException("Já existe um tipo de serviço com o código: " + code);
+        });
+        serviceType.setCode(code);
         ServiceType saved = serviceTypeRepository.save(serviceType);
         sseEmitterService.broadcastAfterCommit("service-type-changed", "created", saved.getId());
         return serviceTypeMapper.toResponse(saved);
@@ -64,5 +76,14 @@ public class ServiceTypeService {
     private ServiceType findEntityById(Long id) {
         return serviceTypeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ServiceType", id));
+    }
+
+    static String generateCode(String name) {
+        return Normalizer.normalize(name, Normalizer.Form.NFD)
+                .replaceAll("[^\\p{ASCII}]", "")
+                .toUpperCase()
+                .trim()
+                .replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
     }
 }

@@ -22,6 +22,9 @@ public class ServiceType extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "base_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal basePrice = BigDecimal.ZERO;
+
     @Column(name = "commission_rate", nullable = false, precision = 5, scale = 2)
     private BigDecimal commissionRate;
 
