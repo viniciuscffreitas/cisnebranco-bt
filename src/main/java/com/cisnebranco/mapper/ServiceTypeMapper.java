@@ -13,12 +13,14 @@ public interface ServiceTypeMapper {
     ServiceTypeResponse toResponse(ServiceType serviceType);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "code", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "active", ignore = true)
     ServiceType toEntity(ServiceTypeRequest request);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "code", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "active", ignore = true)
