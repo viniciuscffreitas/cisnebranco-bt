@@ -6,6 +6,7 @@ public record ServiceTypeResponse(
         Long id,
         String code,
         String name,
+        BigDecimal basePrice,
         BigDecimal commissionRate,
         Integer defaultDurationMinutes,
         boolean active
