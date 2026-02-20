@@ -12,7 +12,6 @@ import com.cisnebranco.entity.Groomer;
 import com.cisnebranco.entity.Pet;
 import com.cisnebranco.entity.PricingMatrix;
 import com.cisnebranco.entity.ServiceType;
-import com.cisnebranco.entity.ServiceTypeBreedPrice;
 import com.cisnebranco.entity.enums.AppointmentStatus;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
@@ -242,14 +241,8 @@ public class AppointmentService {
     }
 
     private AppointmentResponse toResponseWithPrice(Appointment appointment) {
-        AppointmentResponse base = appointmentMapper.toResponse(appointment);
         BigDecimal price = estimatePrice(appointment.getServiceType(), appointment.getPet()).orElse(null);
-        return new AppointmentResponse(
-                base.id(), base.client(), base.pet(), base.groomer(), base.serviceType(),
-                base.scheduledStart(), base.scheduledEnd(), base.status(), base.notes(),
-                base.technicalOsId(), base.cancelledAt(), base.cancellationReason(),
-                base.createdAt(), price
-        );
+        return appointmentMapper.toResponse(appointment).withEstimatedPrice(price);
     }
 
     private Optional<BigDecimal> estimatePrice(ServiceType serviceType, Pet pet) {

@@ -20,4 +20,10 @@ public record AppointmentResponse(
         String cancellationReason,
         LocalDateTime createdAt,
         BigDecimal estimatedPrice
-) {}
+) {
+    public AppointmentResponse withEstimatedPrice(BigDecimal price) {
+        return new AppointmentResponse(id, client, pet, groomer, serviceType,
+                scheduledStart, scheduledEnd, status, notes, technicalOsId,
+                cancelledAt, cancellationReason, createdAt, price);
+    }
+}

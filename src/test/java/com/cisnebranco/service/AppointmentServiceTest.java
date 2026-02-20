@@ -279,6 +279,14 @@ class AppointmentServiceTest extends BaseIntegrationTest {
 
     @Test
     void createAppointment_petWithBreedAndBreedPrice_estimatedPriceIsBreedPrice() {
+        // Also insert a matrix row to confirm breed price wins over it
+        PricingMatrix matrix = new PricingMatrix();
+        matrix.setServiceType(serviceType);
+        matrix.setSpecies(Species.DOG);
+        matrix.setPetSize(PetSize.SMALL);
+        matrix.setPrice(new BigDecimal("40.00"));
+        pricingMatrixRepository.save(matrix);
+
         Breed poodle = new Breed();
         poodle.setName("Poodle Appt Test " + System.nanoTime());
         poodle.setSpecies(Species.DOG);
