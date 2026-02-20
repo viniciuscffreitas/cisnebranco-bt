@@ -10,7 +10,9 @@ import com.cisnebranco.entity.AvailabilityWindow;
 import com.cisnebranco.entity.Client;
 import com.cisnebranco.entity.Groomer;
 import com.cisnebranco.entity.Pet;
+import com.cisnebranco.entity.PricingMatrix;
 import com.cisnebranco.entity.ServiceType;
+import com.cisnebranco.entity.ServiceTypeBreedPrice;
 import com.cisnebranco.entity.enums.AppointmentStatus;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
@@ -20,18 +22,22 @@ import com.cisnebranco.repository.AvailabilityWindowRepository;
 import com.cisnebranco.repository.ClientRepository;
 import com.cisnebranco.repository.GroomerRepository;
 import com.cisnebranco.repository.PetRepository;
+import com.cisnebranco.repository.PricingMatrixRepository;
+import com.cisnebranco.repository.ServiceTypeBreedPriceRepository;
 import com.cisnebranco.repository.ServiceTypeRepository;
 import com.cisnebranco.repository.TechnicalOsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -52,6 +58,8 @@ public class AppointmentService {
     private final PetRepository petRepository;
     private final GroomerRepository groomerRepository;
     private final ServiceTypeRepository serviceTypeRepository;
+    private final PricingMatrixRepository pricingMatrixRepository;
+    private final ServiceTypeBreedPriceRepository breedPriceRepository;
     private final TechnicalOsRepository technicalOsRepository;
     private final TechnicalOsService osService;
     private final AppointmentMapper appointmentMapper;
@@ -90,7 +98,7 @@ public class AppointmentService {
         appointment.setNotes(request.notes());
 
         // The DB trigger will also reject if there's a conflict
-        return appointmentMapper.toResponse(appointmentRepository.save(appointment));
+        return toResponseWithPrice(appointmentRepository.save(appointment));
     }
 
     @Transactional
@@ -120,7 +128,7 @@ public class AppointmentService {
             appointment.setNotes(request.notes());
         }
 
-        return appointmentMapper.toResponse(appointmentRepository.save(appointment));
+        return toResponseWithPrice(appointmentRepository.save(appointment));
     }
 
     private void validateStatusTransition(AppointmentStatus current, AppointmentStatus target) {
@@ -211,14 +219,14 @@ public class AppointmentService {
         appointment.setTechnicalOs(os);
         appointment.setStatus(AppointmentStatus.COMPLETED);
 
-        return appointmentMapper.toResponse(appointmentRepository.save(appointment));
+        return toResponseWithPrice(appointmentRepository.save(appointment));
     }
 
     @Transactional(readOnly = true)
     public List<AppointmentResponse> findByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
         return appointmentRepository.findByDateRange(startDate, endDate)
                 .stream()
-                .map(appointmentMapper::toResponse)
+                .map(this::toResponseWithPrice)
                 .toList();
     }
 
@@ -229,7 +237,31 @@ public class AppointmentService {
         }
         return appointmentRepository.findByClientId(clientId)
                 .stream()
-                .map(appointmentMapper::toResponse)
+                .map(this::toResponseWithPrice)
                 .toList();
+    }
+
+    private AppointmentResponse toResponseWithPrice(Appointment appointment) {
+        AppointmentResponse base = appointmentMapper.toResponse(appointment);
+        BigDecimal price = estimatePrice(appointment.getServiceType(), appointment.getPet()).orElse(null);
+        return new AppointmentResponse(
+                base.id(), base.client(), base.pet(), base.groomer(), base.serviceType(),
+                base.scheduledStart(), base.scheduledEnd(), base.status(), base.notes(),
+                base.technicalOsId(), base.cancelledAt(), base.cancellationReason(),
+                base.createdAt(), price
+        );
+    }
+
+    private Optional<BigDecimal> estimatePrice(ServiceType serviceType, Pet pet) {
+        if (pet.getBreed() != null) {
+            var breedPrice = breedPriceRepository
+                    .findByServiceTypeIdAndBreedId(serviceType.getId(), pet.getBreed().getId());
+            if (breedPrice.isPresent()) {
+                return Optional.of(breedPrice.get().getPrice());
+            }
+        }
+        return pricingMatrixRepository
+                .findByServiceTypeIdAndSpeciesAndPetSize(serviceType.getId(), pet.getSpecies(), pet.getSize())
+                .map(PricingMatrix::getPrice);
     }
 }

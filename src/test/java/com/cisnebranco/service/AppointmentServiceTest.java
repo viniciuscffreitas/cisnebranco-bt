@@ -11,6 +11,9 @@ import com.cisnebranco.entity.enums.*;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.repository.*;
+import com.cisnebranco.entity.Breed;
+import com.cisnebranco.entity.ServiceTypeBreedPrice;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +36,9 @@ class AppointmentServiceTest extends BaseIntegrationTest {
     @Autowired private GroomerRepository groomerRepository;
     @Autowired private ServiceTypeRepository serviceTypeRepository;
     @Autowired private AvailabilityWindowRepository windowRepository;
+    @Autowired private BreedRepository breedRepository;
+    @Autowired private ServiceTypeBreedPriceRepository breedPriceRepository;
+    @Autowired private PricingMatrixRepository pricingMatrixRepository;
 
     private Client client;
     private Pet pet;
@@ -267,6 +273,65 @@ class AppointmentServiceTest extends BaseIntegrationTest {
     void findByClient_invalidClientId_throws() {
         assertThatThrownBy(() -> appointmentService.findByClient(99999L))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // --- Estimated Price ---
+
+    @Test
+    void createAppointment_petWithBreedAndBreedPrice_estimatedPriceIsBreedPrice() {
+        Breed poodle = new Breed();
+        poodle.setName("Poodle Appt Test " + System.nanoTime());
+        poodle.setSpecies(Species.DOG);
+        poodle = breedRepository.save(poodle);
+
+        ServiceTypeBreedPrice breedPrice = new ServiceTypeBreedPrice();
+        breedPrice.setServiceType(serviceType);
+        breedPrice.setBreed(poodle);
+        breedPrice.setPrice(new BigDecimal("65.00"));
+        breedPriceRepository.save(breedPrice);
+
+        pet.setBreed(poodle);
+        petRepository.save(pet);
+
+        AppointmentResponse response = appointmentService.createAppointment(
+                new AppointmentRequest(client.getId(), pet.getId(), groomer.getId(),
+                        serviceType.getId(), getNextWeekday(1).atTime(10, 0), null));
+
+        assertThat(response.estimatedPrice()).isEqualByComparingTo("65.00");
+    }
+
+    @Test
+    void createAppointment_petWithBreedButNoBreedPrice_estimatedPriceFallsBackToMatrix() {
+        Breed labrador = new Breed();
+        labrador.setName("Labrador Appt Test " + System.nanoTime());
+        labrador.setSpecies(Species.DOG);
+        labrador = breedRepository.save(labrador);
+
+        pet.setBreed(labrador);
+        petRepository.save(pet);
+
+        PricingMatrix matrix = new PricingMatrix();
+        matrix.setServiceType(serviceType);
+        matrix.setSpecies(Species.DOG);
+        matrix.setPetSize(PetSize.SMALL);
+        matrix.setPrice(new BigDecimal("40.00"));
+        pricingMatrixRepository.save(matrix);
+
+        AppointmentResponse response = appointmentService.createAppointment(
+                new AppointmentRequest(client.getId(), pet.getId(), groomer.getId(),
+                        serviceType.getId(), getNextWeekday(1).atTime(10, 0), null));
+
+        assertThat(response.estimatedPrice()).isEqualByComparingTo("40.00");
+    }
+
+    @Test
+    void createAppointment_petWithNoBreedAndNoPricingMatrix_estimatedPriceIsNull() {
+        // pet has no breed and no PricingMatrix configured — estimatedPrice must be null
+        AppointmentResponse response = appointmentService.createAppointment(
+                new AppointmentRequest(client.getId(), pet.getId(), groomer.getId(),
+                        serviceType.getId(), getNextWeekday(1).atTime(10, 0), null));
+
+        assertThat(response.estimatedPrice()).isNull();
     }
 
     private LocalDate getNextWeekday(int isoDayOfWeek) {

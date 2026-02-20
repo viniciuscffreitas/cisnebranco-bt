@@ -2,6 +2,7 @@ package com.cisnebranco.dto.response;
 
 import com.cisnebranco.entity.enums.AppointmentStatus;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record AppointmentResponse(
@@ -17,5 +18,6 @@ public record AppointmentResponse(
         Long technicalOsId,
         LocalDateTime cancelledAt,
         String cancellationReason,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        BigDecimal estimatedPrice
 ) {}
