@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 @Service
@@ -44,9 +45,14 @@ public class WhatsAppService {
         }
     }
 
-    public void sendReadyNotification(String phone, String petName, String clientName) {
+    public void sendReadyNotification(String phone, String petName, String clientName, BigDecimal balance) {
         if (!enabled) {
             log.debug("WhatsApp disabled — skipping notification for {}", petName);
+            return;
+        }
+
+        if (phone == null || phone.isBlank()) {
+            log.warn("WhatsApp skipped: phone is null for client {}", clientName);
             return;
         }
 
@@ -57,11 +63,21 @@ public class WhatsAppService {
             return;
         }
 
-        String message = """
-                Olá, %s! 🐾
-                O banho e tosa do(a) %s já está pronto(a).
-                Você já pode vir buscá-lo(a) no Cisne Branco!"""
-                .formatted(clientName, petName);
+        String message;
+        if (balance != null && balance.compareTo(BigDecimal.ZERO) > 0) {
+            message = """
+                    Olá, %s! 🐾
+                    O banho e tosa do(a) %s já está pronto(a).
+                    Saldo a pagar: R$ %.2f.
+                    Aguardamos você no Cisne Branco!"""
+                    .formatted(clientName, petName, balance);
+        } else {
+            message = """
+                    Olá, %s! 🐾
+                    O banho e tosa do(a) %s já está pronto(a).
+                    Você já pode vir buscá-lo(a) no Cisne Branco!"""
+                    .formatted(clientName, petName);
+        }
 
         restClient.post()
                 .uri("/message/sendText/{instance}", instanceName)

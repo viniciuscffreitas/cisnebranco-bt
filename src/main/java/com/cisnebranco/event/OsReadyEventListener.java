@@ -2,6 +2,8 @@ package com.cisnebranco.event;
 
 import com.cisnebranco.entity.Pet;
 import com.cisnebranco.entity.TechnicalOs;
+
+import java.math.BigDecimal;
 import com.cisnebranco.repository.TechnicalOsRepository;
 import com.cisnebranco.service.WhatsAppService;
 import lombok.RequiredArgsConstructor;
@@ -45,11 +47,12 @@ public class OsReadyEventListener {
             String phone = pet.getClient().getPhone();
             String petName = pet.getName();
             String clientName = pet.getClient().getName();
+            BigDecimal balance = os.getTotalPrice().subtract(os.getTotalPaid());
 
-            log.info("OS #{} is READY — sending WhatsApp notification for pet {} to {}",
-                    event.getOsId(), petName, clientName);
+            log.info("OS #{} is READY — sending WhatsApp notification for pet {} to {} (balance={})",
+                    event.getOsId(), petName, clientName, balance);
 
-            whatsAppService.sendReadyNotification(phone, petName, clientName);
+            whatsAppService.sendReadyNotification(phone, petName, clientName, balance);
         } catch (Exception e) {
             log.error("Failed to send WhatsApp notification for OS #{}: {}",
                     event.getOsId(), e.getMessage(), e);
