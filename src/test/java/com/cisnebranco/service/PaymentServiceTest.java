@@ -234,4 +234,21 @@ class PaymentServiceTest extends BaseIntegrationTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("cancelled");
     }
+
+    @Test
+    void recordPayment_onDeliveredOs_throws() {
+        entityManager.createNativeQuery(
+                "UPDATE technical_os SET status = 'DELIVERED' WHERE id = :id")
+                .setParameter("id", osId)
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        PaymentRequest request = new PaymentRequest(
+                new BigDecimal("10.00"), PaymentMethod.PIX, null, null);
+
+        assertThatThrownBy(() -> paymentService.recordPayment(osId, request, userId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("delivered");
+    }
 }
