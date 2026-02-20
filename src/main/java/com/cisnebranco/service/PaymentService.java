@@ -98,6 +98,10 @@ public class PaymentService {
         TechnicalOs os = osRepository.findByIdForUpdate(osId)
                 .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
 
+        if (os.getStatus() == OsStatus.DELIVERED) {
+            throw new BusinessException("Cannot refund payment for a delivered OS");
+        }
+
         BigDecimal newTotal = os.getTotalPaid().subtract(original.getAmount());
         if (newTotal.compareTo(BigDecimal.ZERO) < 0) {
             throw new BusinessException("Refund would result in negative total paid");
