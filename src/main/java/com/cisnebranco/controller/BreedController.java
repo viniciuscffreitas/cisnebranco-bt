@@ -1,6 +1,7 @@
 package com.cisnebranco.controller;
 
 import com.cisnebranco.dto.request.BreedRequest;
+import com.cisnebranco.dto.request.BreedServicePriceRequest;
 import com.cisnebranco.dto.response.BreedResponse;
 import com.cisnebranco.dto.response.BreedServicePriceResponse;
 import com.cisnebranco.service.BreedPriceService;
@@ -41,6 +42,16 @@ public class BreedController {
     @GetMapping("/{id}/service-prices")
     public ResponseEntity<List<BreedServicePriceResponse>> getServicePrices(@PathVariable Long id) {
         return ResponseEntity.ok(breedPriceService.getServicePricesForBreed(id));
+    }
+
+    @Operation(summary = "Upsert a breed-specific service price")
+    @PutMapping("/{breedId}/service-prices/{serviceTypeId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BreedServicePriceResponse> upsertServicePrice(
+            @PathVariable Long breedId,
+            @PathVariable Long serviceTypeId,
+            @Valid @RequestBody BreedServicePriceRequest request) {
+        return ResponseEntity.ok(breedPriceService.upsertServicePrice(breedId, serviceTypeId, request));
     }
 
     @Operation(summary = "Create a new breed")

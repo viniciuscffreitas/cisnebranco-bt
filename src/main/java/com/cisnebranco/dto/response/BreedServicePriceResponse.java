@@ -8,5 +8,6 @@ public record BreedServicePriceResponse(
         String serviceTypeCode,
         String serviceTypeName,
         Integer defaultDurationMinutes,
+        BigDecimal basePrice,
         BigDecimal price
 ) {}
