@@ -10,18 +10,23 @@ import com.cisnebranco.repository.GroomerRepository;
 import com.cisnebranco.repository.TechnicalOsRepository;
 import com.cisnebranco.repository.WeeklyCommissionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WeeklyCommissionService {
 
     private final WeeklyCommissionRepository commissionRepository;
@@ -29,7 +34,7 @@ public class WeeklyCommissionService {
     private final GroomerRepository groomerRepository;
     private final WeeklyCommissionMapper commissionMapper;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public WeeklyCommissionResponse generateForWeek(Long groomerId, LocalDate weekStart) {
         Groomer groomer = groomerRepository.findById(groomerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Groomer", groomerId));
@@ -61,6 +66,22 @@ public class WeeklyCommissionService {
         commission.setTotalCommission(totalCommission);
 
         return commissionMapper.toResponse(commissionRepository.save(commission));
+    }
+
+    @Scheduled(cron = "0 0 8 * * MON")
+    public void autoGenerateLastWeekCommissions() {
+        LocalDate lastMonday = LocalDate.now().with(DayOfWeek.MONDAY).minusWeeks(1);
+        List<Groomer> activeGroomers = groomerRepository.findByActiveTrue();
+        log.info("Auto-generating commissions for week starting {} ({} active groomers)",
+                lastMonday, activeGroomers.size());
+        for (Groomer groomer : activeGroomers) {
+            try {
+                generateForWeek(groomer.getId(), lastMonday);
+                log.info("Commission generated: groomerId={} week={}", groomer.getId(), lastMonday);
+            } catch (Exception e) {
+                log.error("Failed to generate commission: groomerId={} week={}", groomer.getId(), lastMonday, e);
+            }
+        }
     }
 
     @Transactional(readOnly = true)
