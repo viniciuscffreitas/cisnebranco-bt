@@ -109,7 +109,10 @@ public class TechnicalOsController {
 
     @Operation(summary = "List inspection photos for a service order")
     @GetMapping("/{id}/photos")
-    public ResponseEntity<List<InspectionPhotoResponse>> getPhotos(@PathVariable Long id) {
+    public ResponseEntity<List<InspectionPhotoResponse>> getPhotos(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        osService.enforceAccess(id, principal);
         return ResponseEntity.ok(photoService.findByOs(id));
     }
 
