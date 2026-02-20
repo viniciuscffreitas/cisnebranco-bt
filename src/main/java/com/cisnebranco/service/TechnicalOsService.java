@@ -43,13 +43,18 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TechnicalOsService {
+
+    private static final Set<OsStatus> GROOMER_ASSIGNABLE_STATUSES =
+            EnumSet.of(OsStatus.SCHEDULED, OsStatus.WAITING);
 
     private static final Map<OsStatus, OsStatus> VALID_TRANSITIONS = Map.of(
             OsStatus.SCHEDULED, OsStatus.WAITING,
@@ -172,10 +177,53 @@ public class TechnicalOsService {
     @Transactional
     public TechnicalOsResponse assignGroomer(Long osId, Long groomerId) {
         TechnicalOs os = findEntityById(osId);
+
+        if (!GROOMER_ASSIGNABLE_STATUSES.contains(os.getStatus())) {
+            throw new BusinessException(
+                    "Groomer reassignment is only allowed in SCHEDULED or WAITING status (current: "
+                    + os.getStatus() + ")");
+        }
+
+        Long previousGroomerId = os.getGroomer() != null ? os.getGroomer().getId() : null;
+
+        // No-op guard — avoids spurious audit entries and SSE events
+        if (groomerId.equals(previousGroomerId)) {
+            return osMapper.toResponse(os);
+        }
+
         Groomer groomer = groomerRepository.findById(groomerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Groomer", groomerId));
+        if (!groomer.isActive()) {
+            throw new BusinessException("Cannot assign groomer #" + groomerId + " — groomer is inactive");
+        }
+
         os.setGroomer(groomer);
-        return osMapper.toResponse(osRepository.save(os));
+        TechnicalOsResponse response = osMapper.toResponse(osRepository.save(os));
+
+        log.info("Groomer reassigned on OS #{}: {} -> #{}", osId, previousGroomerId, groomerId);
+
+        // [I2] auditService uses REQUIRES_NEW — it commits independently of the outer transaction.
+        // If the outer transaction rolls back after this line, the audit entry will remain.
+        // Accepted: audit over-recording is preferable to audit under-recording.
+        auditService.log("GROOMER_REASSIGNED", "TechnicalOs", osId,
+                "Groomer changed from #" + previousGroomerId + " to #" + groomerId);
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    sseEmitterService.sendToAll("groomer-assigned", Map.of(
+                            "osId", osId,
+                            "groomerId", groomerId
+                    ));
+                } catch (Exception e) {
+                    log.error("Failed to broadcast SSE event for groomer assignment on OS {} (groomerId={})",
+                            osId, groomerId, e);
+                }
+            }
+        });
+
+        return response;
     }
 
     @Transactional(readOnly = true)
