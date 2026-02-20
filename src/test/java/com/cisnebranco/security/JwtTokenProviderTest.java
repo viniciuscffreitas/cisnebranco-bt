@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtTokenProviderTest {
 
@@ -96,5 +97,24 @@ class JwtTokenProviderTest {
     @Test
     void validateToken_null_returnsFalse() {
         assertThat(tokenProvider.validateToken(null)).isFalse();
+    }
+
+    @Test
+    void constructor_shortSecret_throwsIllegalState() {
+        assertThatThrownBy(() -> new JwtTokenProvider("too-short", EXPIRATION_MS))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("32 bytes");
+    }
+
+    @Test
+    void constructor_emptySecret_throwsIllegalState() {
+        assertThatThrownBy(() -> new JwtTokenProvider("", EXPIRATION_MS))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void constructor_secretExactly32Bytes_succeeds() {
+        // 32 ASCII chars = 32 bytes = minimum 256-bit key
+        assertThat(new JwtTokenProvider("a".repeat(32), EXPIRATION_MS)).isNotNull();
     }
 }

@@ -1,3 +1,8 @@
+app:
+  jwt:
+    # Dev-only default secret — NOT for production use
+    secret: ${JWT_SECRET:cisne-branco-dev-secret-key-min-256-bits-long-enough-for-hs256}
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/cisnebranco
