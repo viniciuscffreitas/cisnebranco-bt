@@ -9,6 +9,7 @@ import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.repository.AppUserRepository;
 import com.cisnebranco.repository.GroomerRepository;
+import com.cisnebranco.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class UserService {
     private final GroomerRepository groomerRepository;
     private final PasswordEncoder passwordEncoder;
     private final SseEmitterService sseEmitterService;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
     public UserResponse create(CreateUserRequest request) {
@@ -63,6 +65,7 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
         user.setActive(false);
         userRepository.save(user);
+        refreshTokenRepository.deleteByUserId(id);
         sseEmitterService.broadcastAfterCommit("user-changed", "deactivated", id);
     }
 
