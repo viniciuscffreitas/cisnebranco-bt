@@ -6,8 +6,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ServiceTypeBreedPriceRepository extends JpaRepository<ServiceTypeBreedPrice, Long> {
+
+    Optional<ServiceTypeBreedPrice> findByServiceTypeIdAndBreedId(Long serviceTypeId, Long breedId);
 
     @Query("""
             SELECT p FROM ServiceTypeBreedPrice p

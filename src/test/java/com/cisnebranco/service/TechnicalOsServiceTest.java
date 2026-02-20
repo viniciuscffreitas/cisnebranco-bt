@@ -9,6 +9,8 @@ import com.cisnebranco.entity.*;
 import com.cisnebranco.entity.enums.OsStatus;
 import com.cisnebranco.entity.enums.PetSize;
 import com.cisnebranco.entity.enums.Species;
+import com.cisnebranco.repository.BreedRepository;
+import com.cisnebranco.repository.ServiceTypeBreedPriceRepository;
 import com.cisnebranco.entity.enums.UserRole;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.repository.*;
@@ -33,6 +35,8 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
     @Autowired private GroomerRepository groomerRepository;
     @Autowired private ServiceTypeRepository serviceTypeRepository;
     @Autowired private PricingMatrixRepository pricingMatrixRepository;
+    @Autowired private BreedRepository breedRepository;
+    @Autowired private ServiceTypeBreedPriceRepository breedPriceRepository;
     @Autowired private InspectionPhotoRepository photoRepository;
     @Autowired private HealthChecklistRepository checklistRepository;
     @Autowired private TechnicalOsRepository osRepository;
@@ -398,6 +402,66 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> osService.adjustServiceItemPrice(osId, 99999L,
                 new AdjustServiceItemPriceRequest(new BigDecimal("60.00"), null)))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    // --- Breed-specific Pricing ---
+
+    @Test
+    void checkIn_petWithBreedAndBreedPrice_usesBreedPriceOverPricingMatrix() {
+        Breed poodle = new Breed();
+        poodle.setName("Poodle Test " + System.nanoTime());
+        poodle.setSpecies(Species.DOG);
+        poodle = breedRepository.save(poodle);
+
+        ServiceTypeBreedPrice breedPrice = new ServiceTypeBreedPrice();
+        breedPrice.setServiceType(banhoService);
+        breedPrice.setBreed(poodle);
+        breedPrice.setPrice(new BigDecimal("75.00")); // matrix has R$50.00 for DOG MEDIUM
+        breedPriceRepository.save(breedPrice);
+
+        testPet.setBreed(poodle);
+        petRepository.save(testPet);
+
+        TechnicalOsResponse response = osService.checkIn(new CheckInRequest(
+                testPet.getId(), null, List.of(banhoService.getId()), null));
+
+        assertThat(response.totalPrice()).isEqualByComparingTo("75.00");
+        assertThat(response.serviceItems()).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.lockedPrice()).isEqualByComparingTo("75.00");
+                    // commission: 40% of R$75 = R$30
+                    assertThat(item.commissionValue()).isEqualByComparingTo("30.00");
+                });
+    }
+
+    @Test
+    void checkIn_petWithBreedButNoBreedPrice_fallsBackToPricingMatrix() {
+        Breed labrador = new Breed();
+        labrador.setName("Labrador Test " + System.nanoTime());
+        labrador.setSpecies(Species.DOG);
+        labrador = breedRepository.save(labrador);
+
+        testPet.setBreed(labrador);
+        petRepository.save(testPet);
+
+        // No ServiceTypeBreedPrice configured for this breed — must use PricingMatrix (R$50.00)
+        TechnicalOsResponse response = osService.checkIn(new CheckInRequest(
+                testPet.getId(), null, List.of(banhoService.getId()), null));
+
+        assertThat(response.totalPrice()).isEqualByComparingTo("50.00");
+        assertThat(response.serviceItems()).singleElement()
+                .satisfies(item -> assertThat(item.lockedPrice()).isEqualByComparingTo("50.00"));
+    }
+
+    @Test
+    void checkIn_petWithNoBreed_usesPricingMatrix() {
+        // testPet has no breed (setUp creates it without one) — confirms baseline is unchanged
+        assertThat(testPet.getBreed()).isNull();
+
+        TechnicalOsResponse response = osService.checkIn(new CheckInRequest(
+                testPet.getId(), null, List.of(banhoService.getId()), null));
+
+        assertThat(response.totalPrice()).isEqualByComparingTo("50.00");
     }
 
     // --- Helpers ---
