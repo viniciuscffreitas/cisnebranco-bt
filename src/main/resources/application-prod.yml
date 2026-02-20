@@ -1,6 +1,11 @@
 server:
   forward-headers-strategy: NATIVE
 
+app:
+  jwt:
+    # No fallback — app refuses to start in prod if JWT_SECRET is not set
+    secret: ${JWT_SECRET}
+
 spring:
   datasource:
     url: ${DATABASE_URL}
