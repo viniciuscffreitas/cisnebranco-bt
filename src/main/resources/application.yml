@@ -43,6 +43,7 @@ app:
   rate-limit:
     requests-per-minute: ${RATE_LIMIT_RPM:60}
     auth-requests-per-minute: ${RATE_LIMIT_AUTH_RPM:10}
+    trusted-proxy-cidrs: ${RATE_LIMIT_TRUSTED_CIDRS:172.16.0.0/12}
   whatsapp:
     enabled: ${WHATSAPP_ENABLED:false}
     evolution-api-url: ${EVOLUTION_API_URL:http://localhost:8080}

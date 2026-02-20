@@ -2,6 +2,7 @@ package com.cisnebranco.config;
 
 import com.cisnebranco.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,11 +23,13 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@Slf4j
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -43,8 +46,14 @@ public class SecurityConfig {
     public RateLimitFilter rateLimitFilter(
             @Value("${app.rate-limit.requests-per-minute:60}") int requestsPerMinute,
             @Value("${app.rate-limit.auth-requests-per-minute:10}") int authRequestsPerMinute,
+            @Value("${app.rate-limit.trusted-proxy-cidrs:172.16.0.0/12}") String trustedProxyCidrsStr,
             ObjectMapper objectMapper) {
-        this.rateLimitFilter = new RateLimitFilter(requestsPerMinute, authRequestsPerMinute, objectMapper);
+        List<String> trustedProxyCidrs = Arrays.stream(trustedProxyCidrsStr.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
+        this.rateLimitFilter = new RateLimitFilter(requestsPerMinute, authRequestsPerMinute,
+                trustedProxyCidrs, objectMapper);
         return this.rateLimitFilter;
     }
 
@@ -74,9 +83,11 @@ public class SecurityConfig {
 
     @Scheduled(fixedRate = 300_000) // every 5 minutes
     public void evictRateLimitBuckets() {
-        if (rateLimitFilter != null) {
-            rateLimitFilter.evictExpiredBuckets();
+        if (rateLimitFilter == null) {
+            log.warn("evictRateLimitBuckets: rateLimitFilter not yet initialized, skipping");
+            return;
         }
+        rateLimitFilter.evictExpiredBuckets();
     }
 
     @Bean
