@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -43,8 +44,14 @@ public class SecurityConfig {
     public RateLimitFilter rateLimitFilter(
             @Value("${app.rate-limit.requests-per-minute:60}") int requestsPerMinute,
             @Value("${app.rate-limit.auth-requests-per-minute:10}") int authRequestsPerMinute,
+            @Value("${app.rate-limit.trusted-proxy-cidrs:172.16.0.0/12}") String trustedProxyCidrsStr,
             ObjectMapper objectMapper) {
-        this.rateLimitFilter = new RateLimitFilter(requestsPerMinute, authRequestsPerMinute, objectMapper);
+        List<String> trustedProxyCidrs = Arrays.stream(trustedProxyCidrsStr.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
+        this.rateLimitFilter = new RateLimitFilter(requestsPerMinute, authRequestsPerMinute,
+                trustedProxyCidrs, objectMapper);
         return this.rateLimitFilter;
     }
 
