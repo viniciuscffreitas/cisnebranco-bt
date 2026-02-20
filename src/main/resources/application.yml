@@ -35,7 +35,10 @@ app:
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:8080}
   jwt:
-    secret: ${JWT_SECRET:cisne-branco-dev-secret-key-min-256-bits-long-enough-for-hs256}
+    # No fallback — JWT_SECRET is required in all profiles.
+    # Set a strong random value (e.g. openssl rand -base64 48).
+    # For local development, the default is provided by application-dev.yml.
+    secret: ${JWT_SECRET}
     access-token-expiration-ms: 3600000    # 1h
     refresh-token-expiration-ms: 604800000 # 7d
   upload:

@@ -25,9 +25,9 @@ public class JwtTokenProvider {
     public JwtTokenProvider(
             @Value("${app.jwt.secret}") String secret,
             @Value("${app.jwt.access-token-expiration-ms}") long accessTokenExpirationMs) {
-        if (secret == null || secret.length() < 32) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException(
-                    "JWT secret must be at least 32 characters (256 bits). " +
+                    "JWT secret must be at least 32 bytes (256 bits). " +
                     "Set a strong random value in JWT_SECRET.");
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));

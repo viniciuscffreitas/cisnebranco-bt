@@ -103,13 +103,18 @@ class JwtTokenProviderTest {
     void constructor_shortSecret_throwsIllegalState() {
         assertThatThrownBy(() -> new JwtTokenProvider("too-short", EXPIRATION_MS))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("32 characters");
+                .hasMessageContaining("32 bytes");
     }
 
     @Test
-    void constructor_secretExactly32Chars_succeeds() {
-        // 32 chars = minimum 256-bit key — must not throw
-        String minSecret = "a".repeat(32);
-        assertThat(new JwtTokenProvider(minSecret, EXPIRATION_MS)).isNotNull();
+    void constructor_emptySecret_throwsIllegalState() {
+        assertThatThrownBy(() -> new JwtTokenProvider("", EXPIRATION_MS))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void constructor_secretExactly32Bytes_succeeds() {
+        // 32 ASCII chars = 32 bytes = minimum 256-bit key
+        assertThat(new JwtTokenProvider("a".repeat(32), EXPIRATION_MS)).isNotNull();
     }
 }
