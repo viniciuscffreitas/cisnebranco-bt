@@ -9,5 +9,6 @@ import org.mapstruct.Mapping;
 public interface AppointmentMapper {
 
     @Mapping(source = "technicalOs.id", target = "technicalOsId")
+    @Mapping(target = "estimatedPrice", ignore = true)
     AppointmentResponse toResponse(Appointment appointment);
 }
