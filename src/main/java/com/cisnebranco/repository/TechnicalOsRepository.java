@@ -48,6 +48,8 @@ public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long>,
 
     List<TechnicalOs> findByStatus(OsStatus status);
 
+    int countByGroomerIdAndStatusIn(Long groomerId, List<OsStatus> statuses);
+
     @Query("SELECT os FROM TechnicalOs os WHERE os.groomer.id = :groomerId " +
            "AND os.status = 'DELIVERED' " +
            "AND os.deliveredAt >= :start AND os.deliveredAt < :end")

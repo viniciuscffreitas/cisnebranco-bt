@@ -3,9 +3,12 @@ package com.cisnebranco.service;
 import com.cisnebranco.dto.request.GroomerRequest;
 import com.cisnebranco.dto.response.GroomerResponse;
 import com.cisnebranco.entity.Groomer;
+import com.cisnebranco.entity.enums.OsStatus;
+import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.GroomerMapper;
 import com.cisnebranco.repository.GroomerRepository;
+import com.cisnebranco.repository.TechnicalOsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +19,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GroomerService {
 
+    private static final List<OsStatus> ACTIVE_STATUSES =
+            List.of(OsStatus.SCHEDULED, OsStatus.WAITING, OsStatus.IN_PROGRESS, OsStatus.READY);
+
     private final GroomerRepository groomerRepository;
+    private final TechnicalOsRepository technicalOsRepository;
     private final GroomerMapper groomerMapper;
     private final SseEmitterService sseEmitterService;
 
@@ -58,6 +65,11 @@ public class GroomerService {
     @Transactional
     public void deactivate(Long id) {
         Groomer groomer = findEntityById(id);
+        int activeCount = technicalOsRepository.countByGroomerIdAndStatusIn(id, ACTIVE_STATUSES);
+        if (activeCount > 0) {
+            throw new BusinessException(
+                    String.format("Groomer possui %d OS(s) ativas. Reatribua antes de desativar.", activeCount));
+        }
         groomer.setActive(false);
         groomerRepository.save(groomer);
         sseEmitterService.broadcastAfterCommit("groomer-changed", "deactivated", id);
