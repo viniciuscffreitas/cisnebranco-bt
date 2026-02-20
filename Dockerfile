@@ -8,6 +8,7 @@ RUN apk add --no-cache maven && \
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+RUN apk add --no-cache wget
 RUN addgroup -S spring && adduser -S spring -G spring
 RUN mkdir -p /app/uploads/photos && chown -R spring:spring /app
 USER spring
