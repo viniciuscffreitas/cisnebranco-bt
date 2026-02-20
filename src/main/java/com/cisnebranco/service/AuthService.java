@@ -83,6 +83,11 @@ public class AuthService {
 
         UserPrincipal principal = (UserPrincipal) userDetailsService
                 .loadUserByUsername(stored.getUser().getUsername());
+
+        if (!principal.isEnabled()) {
+            throw new UnauthorizedException("User account is disabled");
+        }
+
         String accessToken = tokenProvider.generateAccessToken(principal);
         String newRefreshToken = createRefreshToken(principal.getId());
 
