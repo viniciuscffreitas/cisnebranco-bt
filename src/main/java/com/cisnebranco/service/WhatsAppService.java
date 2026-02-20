@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -65,12 +66,13 @@ public class WhatsAppService {
 
         String message;
         if (balance != null && balance.compareTo(BigDecimal.ZERO) > 0) {
+            String balanceFormatted = String.format(new Locale("pt", "BR"), "R$ %.2f", balance);
             message = """
                     Olá, %s! 🐾
                     O banho e tosa do(a) %s já está pronto(a).
-                    Saldo a pagar: R$ %.2f.
+                    Saldo a pagar: %s.
                     Aguardamos você no Cisne Branco!"""
-                    .formatted(clientName, petName, balance);
+                    .formatted(clientName, petName, balanceFormatted);
         } else {
             message = """
                     Olá, %s! 🐾

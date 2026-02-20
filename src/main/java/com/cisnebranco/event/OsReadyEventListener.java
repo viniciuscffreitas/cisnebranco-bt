@@ -47,10 +47,14 @@ public class OsReadyEventListener {
             String phone = pet.getClient().getPhone();
             String petName = pet.getName();
             String clientName = pet.getClient().getName();
-            BigDecimal balance = os.getTotalPrice().subtract(os.getTotalPaid());
+            BigDecimal balance = os.getPaymentBalance() != null
+                    ? os.getPaymentBalance()
+                    : os.getTotalPrice().subtract(os.getTotalPaid());
 
-            log.info("OS #{} is READY — sending WhatsApp notification for pet {} to {} (balance={})",
-                    event.getOsId(), petName, clientName, balance);
+            String balanceStatus = (balance != null && balance.compareTo(BigDecimal.ZERO) > 0)
+                    ? "HAS_BALANCE" : "PAID";
+            log.info("OS #{} is READY — sending WhatsApp notification for pet {} to {} (paymentStatus={})",
+                    event.getOsId(), petName, clientName, balanceStatus);
 
             whatsAppService.sendReadyNotification(phone, petName, clientName, balance);
         } catch (Exception e) {
