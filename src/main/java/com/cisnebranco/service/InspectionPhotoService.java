@@ -35,6 +35,7 @@ public class InspectionPhotoService {
     private final InspectionPhotoRepository photoRepository;
     private final TechnicalOsRepository osRepository;
     private final InspectionPhotoMapper photoMapper;
+    private final AuditService auditService;
 
     @Value("${app.upload.photo-dir}")
     private String photoDir;
@@ -65,7 +66,12 @@ public class InspectionPhotoService {
             Files.createDirectories(dir);
             Files.copy(file.getInputStream(), targetFile);
         } catch (IOException e) {
-            throw new BusinessException("Failed to save photo", e);
+            try {
+                Files.deleteIfExists(targetFile);
+            } catch (IOException cleanupEx) {
+                log.warn("Failed to clean up partially written file after I/O failure: {}", targetFile, cleanupEx);
+            }
+            throw new BusinessException("Failed to save photo: " + e.getMessage(), e);
         }
 
         try {
@@ -75,6 +81,9 @@ public class InspectionPhotoService {
             photo.setCaption(caption);
 
             InspectionPhoto saved = photoRepository.save(photo);
+            auditService.log("FOTO_INSPECAO", "TechnicalOs", osId,
+                    "Foto de inspeção adicionada à OS #" + osId
+                    + (caption != null && !caption.isBlank() ? " [" + caption + "]" : ""));
             return photoMapper.toResponse(saved);
         } catch (Exception e) {
             try {

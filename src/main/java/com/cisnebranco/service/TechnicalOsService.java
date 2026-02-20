@@ -4,6 +4,7 @@ import com.cisnebranco.dto.request.AdjustServiceItemPriceRequest;
 import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.request.OsStatusUpdateRequest;
 import com.cisnebranco.dto.request.TechnicalOsFilterRequest;
+import com.cisnebranco.dto.response.AuditLogResponse;
 import com.cisnebranco.dto.response.TechnicalOsGroomerViewResponse;
 import com.cisnebranco.dto.response.TechnicalOsResponse;
 import com.cisnebranco.specification.TechnicalOsSpecification;
@@ -150,6 +151,14 @@ public class TechnicalOsService {
         os.setStatus(newStatus);
         var response = osMapper.toResponse(osRepository.save(os));
         auditService.log("STATUS_CHANGED", "TechnicalOs", osId, currentStatus + " → " + newStatus);
+
+        if (newStatus == OsStatus.IN_PROGRESS) {
+            auditService.log("INICIO_SERVICO", "TechnicalOs", osId,
+                    "Groomer iniciou o atendimento da OS #" + osId);
+        } else if (newStatus == OsStatus.READY) {
+            auditService.log("SERVICO_CONCLUIDO", "TechnicalOs", osId,
+                    "Groomer concluiu o atendimento da OS #" + osId);
+        }
 
         String petName = os.getPet().getName();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -353,6 +362,12 @@ public class TechnicalOsService {
         });
 
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuditLogResponse> getOsAuditLog(Long osId) {
+        findEntityById(osId); // verify OS exists before returning audit entries
+        return auditService.findByOs(osId);
     }
 
     private BigDecimal resolveLockedPrice(Long serviceTypeId, ServiceType serviceType, Pet pet) {

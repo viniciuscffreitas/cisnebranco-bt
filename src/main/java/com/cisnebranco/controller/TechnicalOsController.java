@@ -5,6 +5,7 @@ import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.request.HealthChecklistRequest;
 import com.cisnebranco.dto.request.OsStatusUpdateRequest;
 import com.cisnebranco.dto.request.TechnicalOsFilterRequest;
+import com.cisnebranco.dto.response.AuditLogResponse;
 import com.cisnebranco.dto.response.HealthChecklistResponse;
 import com.cisnebranco.dto.response.InspectionPhotoResponse;
 import com.cisnebranco.dto.response.TechnicalOsGroomerViewResponse;
@@ -145,6 +146,15 @@ public class TechnicalOsController {
     @GetMapping("/{id}/checklist")
     public ResponseEntity<HealthChecklistResponse> getChecklist(@PathVariable Long id) {
         return ResponseEntity.ok(checklistService.findByOs(id));
+    }
+
+    // --- Audit log ---
+
+    @Operation(summary = "Get the immutable audit log for a service order (admin only)")
+    @GetMapping("/{id}/audit")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<AuditLogResponse>> getAuditLog(@PathVariable Long id) {
+        return ResponseEntity.ok(osService.getOsAuditLog(id));
     }
 
     private void requireGroomerProfile(UserPrincipal principal) {

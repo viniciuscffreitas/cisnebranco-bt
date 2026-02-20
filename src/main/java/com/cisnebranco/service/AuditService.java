@@ -1,5 +1,6 @@
 package com.cisnebranco.service;
 
+import com.cisnebranco.dto.response.AuditLogResponse;
 import com.cisnebranco.entity.AuditLog;
 import com.cisnebranco.repository.AuditLogRepository;
 import com.cisnebranco.security.UserPrincipal;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +33,17 @@ public class AuditService {
         persistEntry(action, entityType, entityId, details, username);
     }
 
+    @Transactional(readOnly = true)
+    public List<AuditLogResponse> findByOs(Long osId) {
+        return auditLogRepository
+                .findByEntityTypeAndEntityIdOrderByCreatedAtAsc("TechnicalOs", osId)
+                .stream()
+                .map(e -> new AuditLogResponse(
+                        e.getId(), e.getAction(), e.getEntityType(), e.getEntityId(),
+                        e.getUsername(), e.getDetails(), e.getIpAddress(), e.getCreatedAt()))
+                .toList();
+    }
+
     private void persistEntry(String action, String entityType, Long entityId, String details, String username) {
         try {
             AuditLog entry = new AuditLog();
@@ -43,7 +57,9 @@ public class AuditService {
             auditLogRepository.save(entry);
             log.debug("Audit: {} {} #{} by {} - {}", action, entityType, entityId, username, details);
         } catch (Exception e) {
-            log.error("Failed to persist audit log: action={}, entity={}#{}, user={}",
+            // [AUDIT_FAILURE] Intentionally non-fatal — the business operation has already committed.
+            // Alert on this log pattern to detect audit gaps before they become a compliance issue.
+            log.error("[AUDIT_FAILURE] action={} entity={}#{} user={} — audit entry lost",
                     action, entityType, entityId, username, e);
         }
     }

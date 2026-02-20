@@ -19,6 +19,7 @@ public class HealthChecklistService {
     private final HealthChecklistRepository checklistRepository;
     private final TechnicalOsRepository osRepository;
     private final HealthChecklistMapper checklistMapper;
+    private final AuditService auditService;
 
     @Transactional
     public HealthChecklistResponse createOrUpdate(Long osId, HealthChecklistRequest request) {
@@ -33,7 +34,10 @@ public class HealthChecklistService {
                 });
 
         checklistMapper.updateEntity(request, checklist);
-        return checklistMapper.toResponse(checklistRepository.save(checklist));
+        HealthChecklistResponse response = checklistMapper.toResponse(checklistRepository.save(checklist));
+        auditService.log("ACEITE_VISTORIA", "TechnicalOs", osId,
+                "Groomer registrou/atualizou o checklist de saúde da OS #" + osId);
+        return response;
     }
 
     @Transactional(readOnly = true)
