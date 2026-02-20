@@ -2,6 +2,7 @@ package com.cisnebranco.config;
 
 import com.cisnebranco.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,6 +29,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@Slf4j
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -81,9 +83,11 @@ public class SecurityConfig {
 
     @Scheduled(fixedRate = 300_000) // every 5 minutes
     public void evictRateLimitBuckets() {
-        if (rateLimitFilter != null) {
-            rateLimitFilter.evictExpiredBuckets();
+        if (rateLimitFilter == null) {
+            log.warn("evictRateLimitBuckets: rateLimitFilter not yet initialized, skipping");
+            return;
         }
+        rateLimitFilter.evictExpiredBuckets();
     }
 
     @Bean
