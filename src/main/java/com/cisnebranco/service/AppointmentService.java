@@ -26,6 +26,7 @@ import com.cisnebranco.repository.ServiceTypeBreedPriceRepository;
 import com.cisnebranco.repository.ServiceTypeRepository;
 import com.cisnebranco.repository.TechnicalOsRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
@@ -241,7 +243,14 @@ public class AppointmentService {
     }
 
     private AppointmentResponse toResponseWithPrice(Appointment appointment) {
-        BigDecimal price = estimatePrice(appointment.getServiceType(), appointment.getPet()).orElse(null);
+        BigDecimal price = null;
+        try {
+            price = estimatePrice(appointment.getServiceType(), appointment.getPet()).orElse(null);
+        } catch (Exception e) {
+            log.warn("Failed to estimate price for appointment={} pet={} serviceType={}: {}",
+                    appointment.getId(), appointment.getPet().getId(),
+                    appointment.getServiceType().getId(), e.getMessage());
+        }
         return appointmentMapper.toResponse(appointment).withEstimatedPrice(price);
     }
 

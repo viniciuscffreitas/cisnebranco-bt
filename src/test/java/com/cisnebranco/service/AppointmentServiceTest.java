@@ -6,19 +6,18 @@ import com.cisnebranco.dto.request.AppointmentUpdateRequest;
 import com.cisnebranco.dto.request.AvailabilityWindowRequest;
 import com.cisnebranco.dto.response.AppointmentResponse;
 import com.cisnebranco.dto.response.TimeSlot;
+import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.entity.*;
 import com.cisnebranco.entity.enums.*;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.repository.*;
-import com.cisnebranco.entity.Breed;
-import com.cisnebranco.entity.ServiceTypeBreedPrice;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -340,6 +339,87 @@ class AppointmentServiceTest extends BaseIntegrationTest {
                         serviceType.getId(), getNextWeekday(1).atTime(10, 0), null));
 
         assertThat(response.estimatedPrice()).isNull();
+    }
+
+    @Test
+    void createAppointment_petWithNoBreedAndMatrixExists_estimatedPriceIsMatrixPrice() {
+        // pet has no breed — estimatePrice skips breed block, falls through to matrix
+        PricingMatrix matrix = new PricingMatrix();
+        matrix.setServiceType(serviceType);
+        matrix.setSpecies(Species.DOG);
+        matrix.setPetSize(PetSize.SMALL);
+        matrix.setPrice(new BigDecimal("35.00"));
+        pricingMatrixRepository.save(matrix);
+
+        AppointmentResponse response = appointmentService.createAppointment(
+                new AppointmentRequest(client.getId(), pet.getId(), groomer.getId(),
+                        serviceType.getId(), getNextWeekday(1).atTime(10, 0), null));
+
+        assertThat(response.estimatedPrice()).isEqualByComparingTo("35.00");
+    }
+
+    @Test
+    void updateAppointment_estimatedPriceIsPopulatedOnResponse() {
+        PricingMatrix matrix = new PricingMatrix();
+        matrix.setServiceType(serviceType);
+        matrix.setSpecies(Species.DOG);
+        matrix.setPetSize(PetSize.SMALL);
+        matrix.setPrice(new BigDecimal("30.00"));
+        pricingMatrixRepository.save(matrix);
+
+        AppointmentResponse created = appointmentService.createAppointment(
+                new AppointmentRequest(client.getId(), pet.getId(), groomer.getId(),
+                        serviceType.getId(), getNextWeekday(1).atTime(10, 0), null));
+
+        AppointmentResponse confirmed = appointmentService.updateAppointment(created.id(),
+                new AppointmentUpdateRequest(null, AppointmentStatus.CONFIRMED, null, null));
+
+        assertThat(confirmed.estimatedPrice()).isEqualByComparingTo("30.00");
+    }
+
+    @Test
+    void convertToOs_estimatedPriceIsPopulatedOnResponse() {
+        PricingMatrix matrix = new PricingMatrix();
+        matrix.setServiceType(serviceType);
+        matrix.setSpecies(Species.DOG);
+        matrix.setPetSize(PetSize.SMALL);
+        matrix.setPrice(new BigDecimal("45.00"));
+        pricingMatrixRepository.save(matrix);
+
+        AppointmentResponse created = appointmentService.createAppointment(
+                new AppointmentRequest(client.getId(), pet.getId(), groomer.getId(),
+                        serviceType.getId(), getNextWeekday(1).atTime(10, 0), null));
+
+        appointmentService.updateAppointment(created.id(),
+                new AppointmentUpdateRequest(null, AppointmentStatus.CONFIRMED, null, null));
+
+        AppointmentResponse completed = appointmentService.convertToOs(created.id(),
+                new CheckInRequest(pet.getId(), groomer.getId(), List.of(serviceType.getId()), null));
+
+        assertThat(completed.technicalOsId()).isNotNull();
+        assertThat(completed.status()).isEqualTo(AppointmentStatus.COMPLETED);
+        assertThat(completed.estimatedPrice()).isEqualByComparingTo("45.00");
+    }
+
+    @Test
+    void findByDateRange_estimatedPriceIsPopulatedOnListItems() {
+        PricingMatrix matrix = new PricingMatrix();
+        matrix.setServiceType(serviceType);
+        matrix.setSpecies(Species.DOG);
+        matrix.setPetSize(PetSize.SMALL);
+        matrix.setPrice(new BigDecimal("28.00"));
+        pricingMatrixRepository.save(matrix);
+
+        LocalDateTime nextMonday = getNextWeekday(1).atTime(10, 0);
+        appointmentService.createAppointment(
+                new AppointmentRequest(client.getId(), pet.getId(), groomer.getId(),
+                        serviceType.getId(), nextMonday, null));
+
+        List<AppointmentResponse> results = appointmentService.findByDateRange(
+                nextMonday.minusHours(1), nextMonday.plusHours(1));
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).estimatedPrice()).isEqualByComparingTo("28.00");
     }
 
     private LocalDate getNextWeekday(int isoDayOfWeek) {
