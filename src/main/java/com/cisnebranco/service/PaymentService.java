@@ -5,6 +5,7 @@ import com.cisnebranco.dto.response.PaymentEventResponse;
 import com.cisnebranco.entity.AppUser;
 import com.cisnebranco.entity.PaymentEvent;
 import com.cisnebranco.entity.TechnicalOs;
+import com.cisnebranco.entity.enums.OsStatus;
 import com.cisnebranco.entity.enums.PaymentStatus;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
@@ -35,6 +36,9 @@ public class PaymentService {
         TechnicalOs os = osRepository.findByIdForUpdate(osId)
                 .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
 
+        if (os.getStatus() == OsStatus.DELIVERED) {
+            throw new BusinessException("Cannot record payment for a delivered OS");
+        }
         if (os.getPaymentStatus() == PaymentStatus.CANCELLED) {
             throw new BusinessException("Cannot record payment for a cancelled OS");
         }
@@ -93,6 +97,10 @@ public class PaymentService {
         // Pessimistic lock on the OS to prevent concurrent refund/payment race
         TechnicalOs os = osRepository.findByIdForUpdate(osId)
                 .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
+
+        if (os.getStatus() == OsStatus.DELIVERED) {
+            throw new BusinessException("Cannot refund payment for a delivered OS");
+        }
 
         BigDecimal newTotal = os.getTotalPaid().subtract(original.getAmount());
         if (newTotal.compareTo(BigDecimal.ZERO) < 0) {

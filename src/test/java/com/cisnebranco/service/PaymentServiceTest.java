@@ -234,4 +234,53 @@ class PaymentServiceTest extends BaseIntegrationTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("cancelled");
     }
+
+    @Test
+    void refundPayment_onDeliveredOs_throws() {
+        PaymentEventResponse payment = paymentService.recordPayment(osId,
+                new PaymentRequest(new BigDecimal("50.00"), PaymentMethod.PIX, null, null), userId);
+
+        entityManager.createNativeQuery(
+                "UPDATE technical_os SET status = 'DELIVERED' WHERE id = :id")
+                .setParameter("id", osId)
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThatThrownBy(() -> paymentService.refundPayment(osId, payment.id(), userId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("delivered");
+    }
+
+    @Test
+    void recordPayment_onReadyOs_succeeds() {
+        // READY is the state where payment is collected before pet handoff — must remain allowed
+        entityManager.createNativeQuery(
+                "UPDATE technical_os SET status = 'READY' WHERE id = :id")
+                .setParameter("id", osId)
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThatCode(() -> paymentService.recordPayment(osId,
+                new PaymentRequest(new BigDecimal("50.00"), PaymentMethod.PIX, null, null), userId))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void recordPayment_onDeliveredOs_throws() {
+        entityManager.createNativeQuery(
+                "UPDATE technical_os SET status = 'DELIVERED' WHERE id = :id")
+                .setParameter("id", osId)
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        PaymentRequest request = new PaymentRequest(
+                new BigDecimal("10.00"), PaymentMethod.PIX, null, null);
+
+        assertThatThrownBy(() -> paymentService.recordPayment(osId, request, userId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("delivered");
+    }
 }
