@@ -11,6 +11,7 @@ public record TechnicalOsGroomerViewResponse(
         PetGroomerViewResponse pet,
         OsStatus status,
         BigDecimal totalPrice,
+        BigDecimal totalCommission,
         LocalDateTime startedAt,
         LocalDateTime finishedAt,
         String notes,
