@@ -12,6 +12,7 @@ import com.cisnebranco.entity.OsServiceItem;
 import com.cisnebranco.entity.Pet;
 import com.cisnebranco.entity.PricingMatrix;
 import com.cisnebranco.entity.ServiceType;
+import com.cisnebranco.entity.ServiceTypeBreedPrice;
 import com.cisnebranco.entity.TechnicalOs;
 import com.cisnebranco.entity.enums.OsStatus;
 import com.cisnebranco.entity.enums.UserRole;
@@ -23,6 +24,7 @@ import com.cisnebranco.repository.GroomerRepository;
 import com.cisnebranco.repository.InspectionPhotoRepository;
 import com.cisnebranco.repository.PetRepository;
 import com.cisnebranco.repository.PricingMatrixRepository;
+import com.cisnebranco.repository.ServiceTypeBreedPriceRepository;
 import com.cisnebranco.repository.ServiceTypeRepository;
 import com.cisnebranco.repository.TechnicalOsRepository;
 import com.cisnebranco.security.UserPrincipal;
@@ -61,6 +63,7 @@ public class TechnicalOsService {
     private final GroomerRepository groomerRepository;
     private final ServiceTypeRepository serviceTypeRepository;
     private final PricingMatrixRepository pricingMatrixRepository;
+    private final ServiceTypeBreedPriceRepository breedPriceRepository;
     private final InspectionPhotoRepository photoRepository;
     private final TechnicalOsMapper osMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -90,25 +93,20 @@ public class TechnicalOsService {
             ServiceType serviceType = serviceTypeRepository.findByIdAndActiveTrue(serviceTypeId)
                     .orElseThrow(() -> new ResourceNotFoundException("ServiceType", serviceTypeId));
 
-            PricingMatrix pricing = pricingMatrixRepository
-                    .findByServiceTypeIdAndSpeciesAndPetSize(serviceTypeId, pet.getSpecies(), pet.getSize())
-                    .orElseThrow(() -> new BusinessException(
-                            "No pricing found for service " + serviceType.getName()
-                            + " / " + pet.getSpecies() + " / " + pet.getSize()));
-
-            BigDecimal commissionValue = pricing.getPrice()
+            BigDecimal lockedPrice = resolveLockedPrice(serviceTypeId, serviceType, pet);
+            BigDecimal commissionValue = lockedPrice
                     .multiply(serviceType.getCommissionRate())
                     .setScale(2, RoundingMode.HALF_UP);
 
             OsServiceItem item = new OsServiceItem();
             item.setTechnicalOs(os);
             item.setServiceType(serviceType);
-            item.setLockedPrice(pricing.getPrice());
+            item.setLockedPrice(lockedPrice);
             item.setLockedCommissionRate(serviceType.getCommissionRate());
             item.setCommissionValue(commissionValue);
 
             os.getServiceItems().add(item);
-            totalPrice = totalPrice.add(pricing.getPrice());
+            totalPrice = totalPrice.add(lockedPrice);
             totalCommission = totalCommission.add(commissionValue);
         }
 
@@ -307,6 +305,22 @@ public class TechnicalOsService {
         });
 
         return response;
+    }
+
+    private BigDecimal resolveLockedPrice(Long serviceTypeId, ServiceType serviceType, Pet pet) {
+        if (pet.getBreed() != null) {
+            var breedPrice = breedPriceRepository
+                    .findByServiceTypeIdAndBreedId(serviceTypeId, pet.getBreed().getId());
+            if (breedPrice.isPresent()) {
+                return breedPrice.get().getPrice();
+            }
+        }
+        return pricingMatrixRepository
+                .findByServiceTypeIdAndSpeciesAndPetSize(serviceTypeId, pet.getSpecies(), pet.getSize())
+                .map(PricingMatrix::getPrice)
+                .orElseThrow(() -> new BusinessException(
+                        "No pricing found for service " + serviceType.getName()
+                        + " / " + pet.getSpecies() + " / " + pet.getSize()));
     }
 
     private void validateReadyRequirements(TechnicalOs os) {
