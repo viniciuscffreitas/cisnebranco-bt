@@ -85,8 +85,8 @@ class TechnicalOsFilteringTest extends BaseIntegrationTest {
 
     @Test
     void findByFilters_filterByGroomer_returnsOnlyThatGroomersOs() {
-        osService.checkIn(new CheckInRequest(pet1.getId(), groomer1.getId(), List.of(banho.getId()), null));
-        osService.checkIn(new CheckInRequest(pet2.getId(), groomer2.getId(), List.of(banho.getId()), null));
+        osService.checkIn(new CheckInRequest(pet1.getId(), groomer1.getId(), List.of(banho.getId()), null, null), null);
+        osService.checkIn(new CheckInRequest(pet2.getId(), groomer2.getId(), List.of(banho.getId()), null, null), null);
 
         Page<TechnicalOsResponse> results = osService.findByFilters(
                 new TechnicalOsFilterRequest(null, groomer1.getId(), null, null, null, null),
@@ -98,7 +98,7 @@ class TechnicalOsFilteringTest extends BaseIntegrationTest {
 
     @Test
     void findByFilters_filterByStatus_returnsMatching() {
-        osService.checkIn(new CheckInRequest(pet1.getId(), groomer1.getId(), List.of(banho.getId()), null));
+        osService.checkIn(new CheckInRequest(pet1.getId(), groomer1.getId(), List.of(banho.getId()), null, null), null);
 
         Page<TechnicalOsResponse> results = osService.findByFilters(
                 new TechnicalOsFilterRequest(OsStatus.WAITING, null, null, null, null, null),
@@ -111,8 +111,8 @@ class TechnicalOsFilteringTest extends BaseIntegrationTest {
 
     @Test
     void findByFilters_noFilters_returnsAll() {
-        osService.checkIn(new CheckInRequest(pet1.getId(), groomer1.getId(), List.of(banho.getId()), null));
-        osService.checkIn(new CheckInRequest(pet2.getId(), groomer2.getId(), List.of(banho.getId()), null));
+        osService.checkIn(new CheckInRequest(pet1.getId(), groomer1.getId(), List.of(banho.getId()), null, null), null);
+        osService.checkIn(new CheckInRequest(pet2.getId(), groomer2.getId(), List.of(banho.getId()), null, null), null);
 
         Page<TechnicalOsResponse> results = osService.findByFilters(
                 new TechnicalOsFilterRequest(null, null, null, null, null, null),
@@ -123,7 +123,7 @@ class TechnicalOsFilteringTest extends BaseIntegrationTest {
 
     @Test
     void findByFilters_osWithoutGroomer_stillReturnedWhenNoFilter() {
-        osService.checkIn(new CheckInRequest(pet1.getId(), null, List.of(banho.getId()), null));
+        osService.checkIn(new CheckInRequest(pet1.getId(), null, List.of(banho.getId()), null, null), null);
 
         Page<TechnicalOsResponse> results = osService.findByFilters(
                 new TechnicalOsFilterRequest(null, null, null, null, null, null),

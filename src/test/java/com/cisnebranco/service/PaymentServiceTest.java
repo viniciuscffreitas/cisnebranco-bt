@@ -68,7 +68,7 @@ class PaymentServiceTest extends BaseIntegrationTest {
         pricingMatrixRepository.save(pricing);
 
         var osResponse = osService.checkIn(new CheckInRequest(
-                pet.getId(), groomer.getId(), List.of(banho.getId()), null));
+                pet.getId(), groomer.getId(), List.of(banho.getId()), null, null), null);
         osId = osResponse.id();
 
         AppUser user = new AppUser();
@@ -192,7 +192,7 @@ class PaymentServiceTest extends BaseIntegrationTest {
         pricing.setPrice(new BigDecimal("120.00"));
         pricingMatrixRepository.save(pricing);
 
-        var os2 = osService.checkIn(new CheckInRequest(pet2.getId(), null, List.of(banho.getId()), null));
+        var os2 = osService.checkIn(new CheckInRequest(pet2.getId(), null, List.of(banho.getId()), null, null), null);
 
         assertThatThrownBy(() -> paymentService.refundPayment(os2.id(), payment.id(), userId))
                 .isInstanceOf(BusinessException.class)
