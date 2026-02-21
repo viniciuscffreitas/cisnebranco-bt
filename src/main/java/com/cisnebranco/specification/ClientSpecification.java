@@ -25,6 +25,14 @@ public class ClientSpecification {
         };
     }
 
+    public static Specification<Client> cpfContains(String cpf) {
+        return (root, query, cb) -> {
+            if (cpf == null) return null;
+            String escaped = escapeLike(cpf);
+            return cb.like(root.get("cpf"), "%" + escaped + "%");
+        };
+    }
+
     private static String escapeLike(String value) {
         return value.replace("%", "\\%").replace("_", "\\_");
     }

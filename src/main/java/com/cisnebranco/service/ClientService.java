@@ -41,7 +41,17 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public Page<ClientResponse> search(String name, Pageable pageable) {
-        return clientRepository.findByNameContainingIgnoreCase(name, pageable)
+        if (name == null || name.trim().isEmpty()) {
+            return new org.springframework.data.domain.PageImpl<>(java.util.List.of());
+        }
+
+        // Search by name, phone, or CPF using OR logic
+        Specification<Client> spec = Specification
+                .where(ClientSpecification.nameContains(name))
+                .or(ClientSpecification.phoneContains(name))
+                .or(ClientSpecification.cpfContains(name));
+
+        return clientRepository.findAll(spec, pageable)
                 .map(clientMapper::toResponse);
     }
 
