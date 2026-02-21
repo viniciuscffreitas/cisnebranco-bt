@@ -7,9 +7,9 @@ import com.cisnebranco.dto.response.report.OsStatusDistribution;
 import com.cisnebranco.dto.response.report.PaymentMethodStats;
 import com.cisnebranco.dto.response.report.ServiceTypeReport;
 import com.cisnebranco.repository.ReportRepository;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +23,7 @@ import java.util.List;
 public class ReportService {
 
     private final ReportRepository reportRepository;
-    private final EntityManager entityManager;
+    private final JdbcTemplate jdbcTemplate;
 
     private static final String[] MATERIALIZED_VIEWS = {
             "mv_daily_revenue",
@@ -63,7 +63,8 @@ public class ReportService {
         return reportRepository.getPaymentMethodStats();
     }
 
-    @Transactional
+    // REFRESH MATERIALIZED VIEW CONCURRENTLY cannot run inside a transaction block.
+    // JdbcTemplate.execute() runs with autocommit, satisfying PostgreSQL's requirement.
     @Scheduled(cron = "0 0 * * * *")
     public void refreshMaterializedViews() {
         long startTime = System.currentTimeMillis();
@@ -71,9 +72,7 @@ public class ReportService {
 
         for (String viewName : MATERIALIZED_VIEWS) {
             try {
-                entityManager
-                        .createNativeQuery("REFRESH MATERIALIZED VIEW CONCURRENTLY " + viewName)
-                        .executeUpdate();
+                jdbcTemplate.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY " + viewName);
                 log.info("Materialized view '{}' refreshed successfully", viewName);
             } catch (Exception e) {
                 log.error("Failed to refresh materialized view '{}': {}", viewName, e.getMessage(), e);
