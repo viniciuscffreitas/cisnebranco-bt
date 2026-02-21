@@ -200,7 +200,7 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> osService.updateStatus(osId,
                 new OsStatusUpdateRequest(OsStatus.READY)))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Minimum 3 inspection photos");
+                .hasMessageContaining("pelo menos 3 fotos");
     }
 
     @Test
@@ -214,7 +214,7 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> osService.updateStatus(osId,
                 new OsStatusUpdateRequest(OsStatus.READY)))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Minimum 3 inspection photos");
+                .hasMessageContaining("pelo menos 3 fotos");
     }
 
     @Test

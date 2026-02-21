@@ -479,7 +479,8 @@ public class TechnicalOsService {
     private void validateReadyRequirements(TechnicalOs os) {
         long photoCount = photoRepository.countByTechnicalOsId(os.getId());
         if (photoCount < 3) {
-            throw new BusinessException("Minimum 3 inspection photos required before marking READY (current: " + photoCount + ")");
+            throw new BusinessException(
+                    "São necessárias pelo menos 3 fotos da inspeção para finalizar o atendimento (atual: " + photoCount + ")");
         }
         if (os.getHealthChecklist() == null) {
             throw new BusinessException("Health checklist required before marking READY");
