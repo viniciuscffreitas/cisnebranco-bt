@@ -29,7 +29,7 @@ public class ClientController {
         return ResponseEntity.ok(clientService.findAll(pageable));
     }
 
-    @Operation(summary = "Search clients by name")
+    @Operation(summary = "Search clients by name, CPF, or phone")
     @GetMapping("/search")
     public ResponseEntity<Page<ClientResponse>> search(@RequestParam(required = false) String name,
                                                         @PageableDefault(size = 20, sort = "name") Pageable pageable) {
