@@ -7,6 +7,7 @@ import com.cisnebranco.dto.response.report.OsStatusDistribution;
 import com.cisnebranco.dto.response.report.PaymentMethodStats;
 import com.cisnebranco.dto.response.report.ServiceTypeReport;
 import com.cisnebranco.repository.ReportRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;

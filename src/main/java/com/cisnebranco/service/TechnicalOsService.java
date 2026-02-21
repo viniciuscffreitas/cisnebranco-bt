@@ -318,6 +318,7 @@ public class TechnicalOsService {
                 .where(TechnicalOsSpecification.hasStatus(filter.status()))
                 .and(TechnicalOsSpecification.hasGroomer(filter.groomerId()))
                 .and(TechnicalOsSpecification.hasClient(filter.clientId()))
+                .and(TechnicalOsSpecification.hasPet(filter.petId()))
                 .and(TechnicalOsSpecification.hasPaymentStatus(filter.paymentStatus()))
                 .and(TechnicalOsSpecification.createdBetween(filter.startDate(), filter.endDate()));
 

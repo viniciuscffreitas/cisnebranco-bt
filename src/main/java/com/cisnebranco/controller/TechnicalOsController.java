@@ -78,7 +78,8 @@ public class TechnicalOsController {
             return ResponseEntity.ok(result);
         }
         boolean hasFilters = filter.status() != null || filter.groomerId() != null
-                || filter.clientId() != null || filter.paymentStatus() != null
+                || filter.clientId() != null || filter.petId() != null
+                || filter.paymentStatus() != null
                 || filter.startDate() != null || filter.endDate() != null;
         if (hasFilters) {
             return ResponseEntity.ok(osService.findByFilters(filter, pageable));
