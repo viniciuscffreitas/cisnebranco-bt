@@ -35,7 +35,12 @@ public class BatchSyncService {
                     log.warn("Batch check-in failed at index {}: {}", i, e.getMessage());
                     checkInResults.add(BatchItemResult.fail(i, e.getMessage()));
                 } catch (Exception e) {
-                    log.error("Unexpected error in batch check-in at index {}", i, e);
+                    var prepaid = checkIn.prepaidPayment();
+                    log.error("Unexpected error in batch check-in at index {} (petId={}, prepaid={}/{}): {}",
+                            i, checkIn.petId(),
+                            prepaid != null ? prepaid.amount().toPlainString() : "none",
+                            prepaid != null ? prepaid.method() : "—",
+                            e.getMessage(), e);
                     checkInResults.add(BatchItemResult.fail(i, "Internal error"));
                 }
             }

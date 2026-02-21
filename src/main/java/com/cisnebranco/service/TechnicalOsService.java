@@ -27,6 +27,7 @@ import com.cisnebranco.entity.AppUser;
 import com.cisnebranco.entity.PaymentEvent;
 import com.cisnebranco.repository.AppUserRepository;
 import com.cisnebranco.repository.GroomerRepository;
+import jakarta.persistence.EntityManager;
 import com.cisnebranco.repository.InspectionPhotoRepository;
 import com.cisnebranco.repository.PaymentEventRepository;
 import com.cisnebranco.repository.PetRepository;
@@ -53,6 +54,7 @@ import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -79,6 +81,7 @@ public class TechnicalOsService {
     private final InspectionPhotoRepository photoRepository;
     private final PaymentEventRepository paymentEventRepository;
     private final AppUserRepository appUserRepository;
+    private final EntityManager entityManager;
     private final TechnicalOsMapper osMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
@@ -128,23 +131,41 @@ public class TechnicalOsService {
         os.setTotalCommission(totalCommission);
 
         TechnicalOs saved = osRepository.save(os);
-        auditService.log("CHECKIN", "TechnicalOs", saved.getId(),
-                "Check-in realizado para o pet #" + pet.getId());
 
         if (request.prepaidPayment() != null) {
             recordPrepaidPayment(saved, request.prepaidPayment(), userId);
         }
 
+        // Audit only after all mutations succeed so a BusinessException in
+        // recordPrepaidPayment rolls back the OS without leaving a phantom audit entry.
+        auditService.log("CHECKIN", "TechnicalOs", saved.getId(),
+                "Check-in realizado para o pet #" + pet.getId());
+
+        // Flush pending SQL then refresh to pick up DB-trigger-computed columns
+        // (payment_status, payment_balance) before building the response.
+        osRepository.flush();
+        entityManager.refresh(saved);
+
         eventPublisher.publishEvent(new OsCheckInEvent(this, saved.getId()));
-        return osMapper.toResponse(osRepository.findById(saved.getId()).orElse(saved));
+        return osMapper.toResponse(saved);
     }
 
     private void recordPrepaidPayment(TechnicalOs os, CheckInRequest.PrepaidPaymentRequest prepaid, Long userId) {
-        if (prepaid.amount().compareTo(os.getTotalPrice()) > 0) {
-            throw new BusinessException(
-                    "Pagamento antecipado (R$ " + prepaid.amount() +
-                    ") não pode exceder o valor total da OS (R$ " + os.getTotalPrice() + ")");
+        Objects.requireNonNull(userId, "userId must not be null when recording prepaid payment");
+
+        if (os.getTotalPrice().compareTo(BigDecimal.ZERO) == 0) {
+            log.error("OS #{} has totalPrice=ZERO — possible pricing matrix misconfiguration", os.getId());
+            throw new BusinessException("Valor total da OS é zero. Verifique a configuração de preços.");
         }
+        if (prepaid.amount().compareTo(os.getTotalPrice()) > 0) {
+            log.warn("Prepaid amount {} exceeds OS total {} for pet #{} (userId={})",
+                    prepaid.amount().toPlainString(), os.getTotalPrice().toPlainString(),
+                    os.getPet().getId(), userId);
+            throw new BusinessException(
+                    "Pagamento antecipado (R$ " + prepaid.amount().toPlainString() +
+                    ") não pode exceder o valor total da OS (R$ " + os.getTotalPrice().toPlainString() + ")");
+        }
+
         AppUser user = appUserRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("AppUser", userId));
 
@@ -157,11 +178,13 @@ public class TechnicalOsService {
         event.setCreatedBy(user);
         paymentEventRepository.save(event);
 
-        os.setTotalPaid(prepaid.amount());
+        // Additive update — correct even if totalPaid was non-zero (defensive).
+        os.setTotalPaid(os.getTotalPaid().add(prepaid.amount()));
         osRepository.save(os);
 
-        auditService.log("PAYMENT_RECORDED", "TechnicalOs", os.getId(),
-                "Prepaid: R$ " + prepaid.amount() + " via " + prepaid.method());
+        // logOrThrow: payment is a financial record — silent audit loss is a compliance gap.
+        auditService.logOrThrow("PAYMENT_RECORDED", "TechnicalOs", os.getId(),
+                "Prepaid: R$ " + prepaid.amount().toPlainString() + " via " + prepaid.method());
         log.info("Prepaid payment of {} recorded for OS #{}", prepaid.amount(), os.getId());
     }
 
