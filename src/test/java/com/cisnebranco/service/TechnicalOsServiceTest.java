@@ -151,12 +151,23 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
     @Test
     void updateStatus_waitingToInProgress_setsStartedAt() {
         Long osId = createOsInStatus(OsStatus.WAITING);
+        addPhotos(osId, 1); // P1-13: ≥1 photo required
 
         TechnicalOsResponse result = osService.updateStatus(osId,
                 new OsStatusUpdateRequest(OsStatus.IN_PROGRESS));
 
         assertThat(result.status()).isEqualTo(OsStatus.IN_PROGRESS);
         assertThat(result.startedAt()).isNotNull();
+    }
+
+    @Test
+    void updateStatus_waitingToInProgress_withoutPhotos_throws() {
+        Long osId = createOsInStatus(OsStatus.WAITING);
+
+        assertThatThrownBy(() -> osService.updateStatus(osId,
+                new OsStatusUpdateRequest(OsStatus.IN_PROGRESS)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("pelo menos 1 foto");
     }
 
     @Test
@@ -189,19 +200,21 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> osService.updateStatus(osId,
                 new OsStatusUpdateRequest(OsStatus.READY)))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Minimum 3 inspection photos");
+                .hasMessageContaining("pelo menos 3 fotos");
     }
 
     @Test
     void updateStatus_toReady_withInsufficientPhotos_throws() {
         Long osId = createOsInStatus(OsStatus.IN_PROGRESS);
-        addPhotos(osId, 2);
+        // createOsInStatus(IN_PROGRESS) already added 1 photo (P1-13 requirement);
+        // add 1 more → total 2, which is still < 3 required for READY.
+        addPhotos(osId, 1);
         addHealthChecklist(osId);
 
         assertThatThrownBy(() -> osService.updateStatus(osId,
                 new OsStatusUpdateRequest(OsStatus.READY)))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Minimum 3 inspection photos");
+                .hasMessageContaining("pelo menos 3 fotos");
     }
 
     @Test
@@ -234,11 +247,12 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
     void fullLifecycle_waitingThroughDelivered() {
         Long osId = createOsInStatus(OsStatus.WAITING);
 
-        // WAITING → IN_PROGRESS
+        // WAITING → IN_PROGRESS (P1-13: ≥1 photo required)
+        addPhotos(osId, 1);
         osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.IN_PROGRESS));
 
-        // IN_PROGRESS → READY (requires photos + checklist)
-        addPhotos(osId, 3);
+        // IN_PROGRESS → READY (requires ≥3 photos total + checklist)
+        addPhotos(osId, 2); // +2 to total 3
         addHealthChecklist(osId);
         osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.READY));
 
@@ -305,6 +319,7 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
                 testPet.getId(), testGroomer.getId(),
                 List.of(banhoService.getId(), tosaTesouraService.getId()), null, null), null);
         Long osId = os.id();
+        addPhotos(osId, 1); // P1-13: ≥1 photo required for WAITING → IN_PROGRESS
         osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.IN_PROGRESS));
 
         Long banhoItemId = os.serviceItems().stream()
@@ -478,11 +493,12 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         if (targetStatus == OsStatus.WAITING) {
             return osId;
         }
+        addPhotos(osId, 1); // P1-13: ≥1 photo required for WAITING → IN_PROGRESS
         osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.IN_PROGRESS));
         if (targetStatus == OsStatus.IN_PROGRESS) {
             return osId;
         }
-        addPhotos(osId, 3);
+        addPhotos(osId, 2); // +2 to total 3 photos required for IN_PROGRESS → READY
         addHealthChecklist(osId);
         osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.READY));
         if (targetStatus == OsStatus.READY) {

@@ -199,6 +199,9 @@ public class TechnicalOsService {
             throw new BusinessException("Invalid status transition: " + currentStatus + " → " + newStatus);
         }
 
+        if (newStatus == OsStatus.IN_PROGRESS) {
+            validateInProgressRequirements(os);
+        }
         if (newStatus == OsStatus.READY) {
             validateReadyRequirements(os);
         }
@@ -465,10 +468,19 @@ public class TechnicalOsService {
                         + " / " + pet.getSpecies() + " / " + pet.getSize()));
     }
 
+    private void validateInProgressRequirements(TechnicalOs os) {
+        long photoCount = photoRepository.countByTechnicalOsId(os.getId());
+        if (photoCount == 0) {
+            throw new BusinessException(
+                    "É necessário registrar pelo menos 1 foto da inspeção antes de iniciar o atendimento.");
+        }
+    }
+
     private void validateReadyRequirements(TechnicalOs os) {
         long photoCount = photoRepository.countByTechnicalOsId(os.getId());
         if (photoCount < 3) {
-            throw new BusinessException("Minimum 3 inspection photos required before marking READY (current: " + photoCount + ")");
+            throw new BusinessException(
+                    "São necessárias pelo menos 3 fotos da inspeção para finalizar o atendimento (atual: " + photoCount + ")");
         }
         if (os.getHealthChecklist() == null) {
             throw new BusinessException("Health checklist required before marking READY");

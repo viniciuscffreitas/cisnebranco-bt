@@ -86,8 +86,10 @@ public class ReportController {
     @Operation(summary = "Refresh materialized report views")
     @PostMapping("/refresh")
     public ResponseEntity<Void> refreshReports() {
-        reportService.refreshReports();
-        return ResponseEntity.noContent().build();
+        int failures = reportService.refreshMaterializedViews();
+        return failures == 0
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
     // ── CSV export endpoints ───────────────────────────────────────────
