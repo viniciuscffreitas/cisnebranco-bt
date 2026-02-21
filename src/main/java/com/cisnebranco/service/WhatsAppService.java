@@ -46,6 +46,50 @@ public class WhatsAppService {
         }
     }
 
+    public void sendCheckInNotification(String phone, String petName, String clientName, String serviceName) {
+        if (!enabled) {
+            log.debug("WhatsApp disabled — skipping check-in notification for {}", petName);
+            return;
+        }
+        if (phone == null || phone.isBlank()) {
+            log.warn("WhatsApp check-in skipped: phone is null for client {}", clientName);
+            return;
+        }
+        String number = formatPhone(phone);
+        if (number.length() < 12) {
+            log.warn("Invalid phone for client {} (pet {}), skipping check-in notification", clientName, petName);
+            return;
+        }
+        String message = """
+                Olá, %s! 🐾
+                Recebemos %s para %s no Cisne Branco.
+                Você será avisado(a) quando o serviço estiver concluído!"""
+                .formatted(clientName, petName, serviceName);
+        trySend(number, message, "check-in", clientName, petName);
+    }
+
+    public void sendInProgressNotification(String phone, String petName, String clientName) {
+        if (!enabled) {
+            log.debug("WhatsApp disabled — skipping in-progress notification for {}", petName);
+            return;
+        }
+        if (phone == null || phone.isBlank()) {
+            log.warn("WhatsApp in-progress skipped: phone is null for client {}", clientName);
+            return;
+        }
+        String number = formatPhone(phone);
+        if (number.length() < 12) {
+            log.warn("Invalid phone for client {} (pet {}), skipping in-progress notification", clientName, petName);
+            return;
+        }
+        String message = """
+                Olá, %s! ✂️
+                O banho e tosa do(a) %s começou!
+                Em breve você será notificado(a) quando estiver pronto(a)."""
+                .formatted(clientName, petName);
+        trySend(number, message, "in-progress", clientName, petName);
+    }
+
     public void sendReadyNotification(String phone, String petName, String clientName, BigDecimal balance) {
         if (!enabled) {
             log.debug("WhatsApp disabled — skipping notification for {}", petName);
@@ -81,6 +125,11 @@ public class WhatsAppService {
                     .formatted(clientName, petName);
         }
 
+        trySend(number, message, "ready", clientName, petName);
+    }
+
+    private void trySend(String number, String message, String eventType,
+                         String clientName, String petName) {
         restClient.post()
                 .uri("/message/sendText/{instance}", instanceName)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -91,7 +140,7 @@ public class WhatsAppService {
                 .retrieve()
                 .toBodilessEntity();
 
-        log.info("WhatsApp notification sent to {} for pet {}", maskPhone(number), petName);
+        log.info("WhatsApp [{}] notification sent to {} for pet {}", eventType, maskPhone(number), petName);
     }
 
     private String formatPhone(String phone) {

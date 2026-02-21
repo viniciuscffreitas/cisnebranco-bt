@@ -17,7 +17,9 @@ import com.cisnebranco.entity.ServiceTypeBreedPrice;
 import com.cisnebranco.entity.TechnicalOs;
 import com.cisnebranco.entity.enums.OsStatus;
 import com.cisnebranco.entity.enums.UserRole;
+import com.cisnebranco.event.OsCheckInEvent;
 import com.cisnebranco.event.OsReadyEvent;
+import com.cisnebranco.event.OsStartedEvent;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.TechnicalOsMapper;
@@ -120,6 +122,7 @@ public class TechnicalOsService {
         os.setTotalCommission(totalCommission);
 
         TechnicalOs saved = osRepository.save(os);
+        eventPublisher.publishEvent(new OsCheckInEvent(this, saved.getId()));
         return osMapper.toResponse(saved);
     }
 
@@ -155,6 +158,7 @@ public class TechnicalOsService {
         if (newStatus == OsStatus.IN_PROGRESS) {
             auditService.log("INICIO_SERVICO", "TechnicalOs", osId,
                     "Groomer iniciou o atendimento da OS #" + osId);
+            eventPublisher.publishEvent(new OsStartedEvent(this, osId));
         } else if (newStatus == OsStatus.READY) {
             auditService.log("SERVICO_CONCLUIDO", "TechnicalOs", osId,
                     "Groomer concluiu o atendimento da OS #" + osId);
@@ -309,6 +313,12 @@ public class TechnicalOsService {
         if (request.adjustedPrice().compareTo(item.getLockedPrice()) < 0) {
             throw new BusinessException("O preço ajustado não pode ser menor que o preço base (R$ "
                     + item.getLockedPrice() + ")");
+        }
+
+        BigDecimal maxAllowedPrice = item.getLockedPrice().multiply(new BigDecimal("3"));
+        if (request.adjustedPrice().compareTo(maxAllowedPrice) > 0) {
+            throw new BusinessException("O preço ajustado não pode exceder 3× o valor base (máx. R$ "
+                    + maxAllowedPrice.setScale(2, RoundingMode.HALF_UP) + ")");
         }
 
         BigDecimal originalPrice = item.getLockedPrice();
