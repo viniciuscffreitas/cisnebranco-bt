@@ -32,6 +32,11 @@ public class TechnicalOsSpecification {
                 paymentStatus == null ? null : cb.equal(root.get("paymentStatus"), paymentStatus);
     }
 
+    public static Specification<TechnicalOs> hasPet(Long petId) {
+        return (root, query, cb) ->
+                petId == null ? null : cb.equal(root.join("pet", JoinType.LEFT).get("id"), petId);
+    }
+
     public static Specification<TechnicalOs> createdBetween(LocalDateTime start, LocalDateTime end) {
         return (root, query, cb) -> {
             if (start == null && end == null) return null;

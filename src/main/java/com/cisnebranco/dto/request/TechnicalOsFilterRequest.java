@@ -9,6 +9,7 @@ public record TechnicalOsFilterRequest(
         OsStatus status,
         Long groomerId,
         Long clientId,
+        Long petId,
         PaymentStatus paymentStatus,
         LocalDateTime startDate,
         LocalDateTime endDate
