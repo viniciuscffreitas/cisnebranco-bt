@@ -86,7 +86,7 @@ public class ReportController {
     @Operation(summary = "Refresh materialized report views")
     @PostMapping("/refresh")
     public ResponseEntity<Void> refreshReports() {
-        reportService.refreshReports();
+        reportService.refreshMaterializedViews();
         return ResponseEntity.noContent().build();
     }
 

@@ -7,6 +7,7 @@ import com.cisnebranco.dto.response.report.OsStatusDistribution;
 import com.cisnebranco.dto.response.report.PaymentMethodStats;
 import com.cisnebranco.dto.response.report.ServiceTypeReport;
 import com.cisnebranco.repository.ReportRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,6 +23,15 @@ import java.util.List;
 public class ReportService {
 
     private final ReportRepository reportRepository;
+    private final EntityManager entityManager;
+
+    private static final String[] MATERIALIZED_VIEWS = {
+            "mv_daily_revenue",
+            "mv_service_type_stats",
+            "mv_groomer_performance",
+            "mv_os_status_distribution",
+            "mv_payment_method_stats"
+    };
 
     @Transactional(readOnly = true)
     public List<DailyRevenueReport> getRevenueReport(LocalDate startDate, LocalDate endDate) {
@@ -55,13 +65,22 @@ public class ReportService {
 
     @Transactional
     @Scheduled(cron = "0 0 * * * *")
-    public void refreshReports() {
-        log.info("Refreshing materialized report views...");
-        try {
-            reportRepository.refreshMaterializedViews();
-            log.info("Materialized report views refreshed successfully");
-        } catch (Exception e) {
-            log.error("Failed to refresh materialized report views", e);
+    public void refreshMaterializedViews() {
+        long startTime = System.currentTimeMillis();
+        log.info("Starting scheduled refresh of {} materialized views", MATERIALIZED_VIEWS.length);
+
+        for (String viewName : MATERIALIZED_VIEWS) {
+            try {
+                entityManager
+                        .createNativeQuery("REFRESH MATERIALIZED VIEW CONCURRENTLY " + viewName)
+                        .executeUpdate();
+                log.info("Materialized view '{}' refreshed successfully", viewName);
+            } catch (Exception e) {
+                log.error("Failed to refresh materialized view '{}': {}", viewName, e.getMessage(), e);
+            }
         }
+
+        long durationMs = System.currentTimeMillis() - startTime;
+        log.info("Materialized view refresh cycle completed in {} ms", durationMs);
     }
 }
