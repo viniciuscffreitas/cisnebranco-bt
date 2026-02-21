@@ -17,7 +17,9 @@ import com.cisnebranco.entity.ServiceTypeBreedPrice;
 import com.cisnebranco.entity.TechnicalOs;
 import com.cisnebranco.entity.enums.OsStatus;
 import com.cisnebranco.entity.enums.UserRole;
+import com.cisnebranco.event.OsCheckInEvent;
 import com.cisnebranco.event.OsReadyEvent;
+import com.cisnebranco.event.OsStartedEvent;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.TechnicalOsMapper;
@@ -120,6 +122,9 @@ public class TechnicalOsService {
         os.setTotalCommission(totalCommission);
 
         TechnicalOs saved = osRepository.save(os);
+        auditService.log("CHECKIN", "TechnicalOs", saved.getId(),
+                "Check-in realizado para o pet #" + pet.getId());
+        eventPublisher.publishEvent(new OsCheckInEvent(this, saved.getId()));
         return osMapper.toResponse(saved);
     }
 
@@ -140,21 +145,24 @@ public class TechnicalOsService {
 
         switch (newStatus) {
             case IN_PROGRESS -> os.setStartedAt(LocalDateTime.now());
-            case READY -> {
-                os.setFinishedAt(LocalDateTime.now());
-                eventPublisher.publishEvent(new OsReadyEvent(this, osId));
-            }
+            case READY -> os.setFinishedAt(LocalDateTime.now());
             case DELIVERED -> os.setDeliveredAt(LocalDateTime.now());
             default -> {}
         }
 
         os.setStatus(newStatus);
         var response = osMapper.toResponse(osRepository.save(os));
+
+        // Publish events after save so all listeners read committed data via AFTER_COMMIT.
+        if (newStatus == OsStatus.READY) {
+            eventPublisher.publishEvent(new OsReadyEvent(this, osId));
+        }
         auditService.log("STATUS_CHANGED", "TechnicalOs", osId, currentStatus + " → " + newStatus);
 
         if (newStatus == OsStatus.IN_PROGRESS) {
             auditService.log("INICIO_SERVICO", "TechnicalOs", osId,
                     "Groomer iniciou o atendimento da OS #" + osId);
+            eventPublisher.publishEvent(new OsStartedEvent(this, osId));
         } else if (newStatus == OsStatus.READY) {
             auditService.log("SERVICO_CONCLUIDO", "TechnicalOs", osId,
                     "Groomer concluiu o atendimento da OS #" + osId);
@@ -306,9 +314,20 @@ public class TechnicalOsService {
                     return new AccessDeniedException("Service item does not belong to OS #" + osId);
                 });
 
+        if (item.getLockedPrice() == null) {
+            log.error("OS #{} item #{} has null lockedPrice — data integrity issue", osId, itemId);
+            throw new BusinessException("Item #" + itemId + " tem preço base inválido. Contate o suporte.");
+        }
+
         if (request.adjustedPrice().compareTo(item.getLockedPrice()) < 0) {
             throw new BusinessException("O preço ajustado não pode ser menor que o preço base (R$ "
                     + item.getLockedPrice() + ")");
+        }
+
+        BigDecimal maxAllowedPrice = item.getLockedPrice().multiply(new BigDecimal("3"));
+        if (request.adjustedPrice().compareTo(maxAllowedPrice) > 0) {
+            throw new BusinessException("O preço ajustado não pode exceder 3× o valor base (máx. R$ "
+                    + maxAllowedPrice.setScale(2, RoundingMode.HALF_UP) + ")");
         }
 
         BigDecimal originalPrice = item.getLockedPrice();

@@ -33,6 +33,24 @@ public class AuditService {
         persistEntry(action, entityType, entityId, details, username);
     }
 
+    /**
+     * Like {@link #log}, but does NOT suppress exceptions. Use for irreversible operations
+     * (e.g. LGPD erasure) where a missing audit entry is a compliance failure — the caller's
+     * transaction will roll back if the audit write fails, keeping data consistent.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void logOrThrow(String action, String entityType, Long entityId, String details) {
+        AuditLog entry = new AuditLog();
+        entry.setAction(action);
+        entry.setEntityType(entityType);
+        entry.setEntityId(entityId);
+        entry.setDetails(details);
+        entry.setUsername(getCurrentUsername());
+        entry.setIpAddress(getCurrentIp());
+        auditLogRepository.save(entry);
+        log.debug("Audit (critical): {} {} #{} — {}", action, entityType, entityId, details);
+    }
+
     @Transactional(readOnly = true)
     public List<AuditLogResponse> findByOs(Long osId) {
         return auditLogRepository

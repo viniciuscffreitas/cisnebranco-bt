@@ -26,6 +26,11 @@ public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long>,
     @Query("SELECT os FROM TechnicalOs os JOIN FETCH os.pet p JOIN FETCH p.client WHERE os.id = :id")
     Optional<TechnicalOs> findByIdWithPetAndClient(@Param("id") Long id);
 
+    @Query("SELECT os FROM TechnicalOs os JOIN FETCH os.pet p JOIN FETCH p.client " +
+           "LEFT JOIN FETCH os.serviceItems si LEFT JOIN FETCH si.serviceType " +
+           "WHERE os.id = :id")
+    Optional<TechnicalOs> findByIdWithPetClientAndServices(@Param("id") Long id);
+
     @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
     @Query("SELECT os FROM TechnicalOs os")
     List<TechnicalOs> findAllWithDetails();
