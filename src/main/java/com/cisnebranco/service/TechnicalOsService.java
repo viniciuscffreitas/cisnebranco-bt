@@ -122,6 +122,8 @@ public class TechnicalOsService {
         os.setTotalCommission(totalCommission);
 
         TechnicalOs saved = osRepository.save(os);
+        auditService.log("CHECKIN", "TechnicalOs", saved.getId(),
+                "Check-in realizado para o pet #" + pet.getId());
         eventPublisher.publishEvent(new OsCheckInEvent(this, saved.getId()));
         return osMapper.toResponse(saved);
     }
@@ -143,16 +145,18 @@ public class TechnicalOsService {
 
         switch (newStatus) {
             case IN_PROGRESS -> os.setStartedAt(LocalDateTime.now());
-            case READY -> {
-                os.setFinishedAt(LocalDateTime.now());
-                eventPublisher.publishEvent(new OsReadyEvent(this, osId));
-            }
+            case READY -> os.setFinishedAt(LocalDateTime.now());
             case DELIVERED -> os.setDeliveredAt(LocalDateTime.now());
             default -> {}
         }
 
         os.setStatus(newStatus);
         var response = osMapper.toResponse(osRepository.save(os));
+
+        // Publish events after save so all listeners read committed data via AFTER_COMMIT.
+        if (newStatus == OsStatus.READY) {
+            eventPublisher.publishEvent(new OsReadyEvent(this, osId));
+        }
         auditService.log("STATUS_CHANGED", "TechnicalOs", osId, currentStatus + " → " + newStatus);
 
         if (newStatus == OsStatus.IN_PROGRESS) {
@@ -309,6 +313,11 @@ public class TechnicalOsService {
                     log.warn("Attempted to adjust item {} which does not belong to OS {}", itemId, osId);
                     return new AccessDeniedException("Service item does not belong to OS #" + osId);
                 });
+
+        if (item.getLockedPrice() == null) {
+            log.error("OS #{} item #{} has null lockedPrice — data integrity issue", osId, itemId);
+            throw new BusinessException("Item #" + itemId + " tem preço base inválido. Contate o suporte.");
+        }
 
         if (request.adjustedPrice().compareTo(item.getLockedPrice()) < 0) {
             throw new BusinessException("O preço ajustado não pode ser menor que o preço base (R$ "

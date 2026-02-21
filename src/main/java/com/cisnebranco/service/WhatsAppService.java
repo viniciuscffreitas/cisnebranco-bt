@@ -130,17 +130,21 @@ public class WhatsAppService {
 
     private void trySend(String number, String message, String eventType,
                          String clientName, String petName) {
-        restClient.post()
-                .uri("/message/sendText/{instance}", instanceName)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of(
-                        "number", number,
-                        "text", message
-                ))
-                .retrieve()
-                .toBodilessEntity();
-
-        log.info("WhatsApp [{}] notification sent to {} for pet {}", eventType, maskPhone(number), petName);
+        try {
+            restClient.post()
+                    .uri("/message/sendText/{instance}", instanceName)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                            "number", number,
+                            "text", message
+                    ))
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("WhatsApp [{}] notification sent to {} for pet {}", eventType, maskPhone(number), petName);
+        } catch (Exception e) {
+            log.error("WhatsApp [{}] notification failed for {} (pet {}): {}",
+                    eventType, maskPhone(number), petName, e.getMessage(), e);
+        }
     }
 
     private String formatPhone(String phone) {

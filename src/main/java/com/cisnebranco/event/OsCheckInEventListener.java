@@ -28,7 +28,7 @@ public class OsCheckInEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOsCheckIn(OsCheckInEvent event) {
         try {
-            TechnicalOs os = technicalOsRepository.findByIdWithPetAndClient(event.getOsId())
+            TechnicalOs os = technicalOsRepository.findByIdWithPetClientAndServices(event.getOsId())
                     .orElse(null);
             if (os == null) {
                 log.warn("OS #{} not found for check-in WhatsApp notification", event.getOsId());

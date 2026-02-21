@@ -24,7 +24,9 @@ import java.util.List;
 public class ClientService {
 
     // Placeholder used when anonymizing PII — satisfies the NOT NULL DB constraint on phone.
-    private static final String ANONYMIZED_PHONE = "00000000000";
+    // "0" becomes "550" after formatPhone(), which is < 12 chars and will be rejected by
+    // WhatsAppService before any API call is made, so no bogus notifications are sent.
+    private static final String ANONYMIZED_PHONE = "0";
 
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
@@ -85,12 +87,14 @@ public class ClientService {
     @Transactional
     public void delete(Long id) {
         Client client = findEntityById(id);
-        client.setName("CLIENTE EXCLUÍDO");
+        client.setName("CLIENTE EXCLUÍDO #" + id);
         client.setPhone(ANONYMIZED_PHONE);
         client.setEmail(null);
         client.setAddress(null);
         clientRepository.save(client);
-        auditService.log("CLIENT_ANONYMIZED", "Client", id,
+        // logOrThrow: if the audit write fails, the outer @Transactional rolls back the
+        // anonymization — preserving the PII until the audit infrastructure is healthy.
+        auditService.logOrThrow("CLIENT_ANONYMIZED", "Client", id,
                 "Dados pessoais anonimizados por solicitação (LGPD Art. 18)");
         log.info("Client #{} anonymized (LGPD)", id);
         sseEmitterService.broadcastAfterCommit("client-changed", "deleted", id);
