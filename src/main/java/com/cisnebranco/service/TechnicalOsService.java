@@ -23,8 +23,12 @@ import com.cisnebranco.event.OsStartedEvent;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.exception.ResourceNotFoundException;
 import com.cisnebranco.mapper.TechnicalOsMapper;
+import com.cisnebranco.entity.AppUser;
+import com.cisnebranco.entity.PaymentEvent;
+import com.cisnebranco.repository.AppUserRepository;
 import com.cisnebranco.repository.GroomerRepository;
 import com.cisnebranco.repository.InspectionPhotoRepository;
+import com.cisnebranco.repository.PaymentEventRepository;
 import com.cisnebranco.repository.PetRepository;
 import com.cisnebranco.repository.PricingMatrixRepository;
 import com.cisnebranco.repository.ServiceTypeBreedPriceRepository;
@@ -73,13 +77,15 @@ public class TechnicalOsService {
     private final PricingMatrixRepository pricingMatrixRepository;
     private final ServiceTypeBreedPriceRepository breedPriceRepository;
     private final InspectionPhotoRepository photoRepository;
+    private final PaymentEventRepository paymentEventRepository;
+    private final AppUserRepository appUserRepository;
     private final TechnicalOsMapper osMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
     private final SseEmitterService sseEmitterService;
 
     @Transactional
-    public TechnicalOsResponse checkIn(CheckInRequest request) {
+    public TechnicalOsResponse checkIn(CheckInRequest request, Long userId) {
         Pet pet = petRepository.findByIdAndActiveTrue(request.petId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pet", request.petId()));
 
@@ -124,8 +130,39 @@ public class TechnicalOsService {
         TechnicalOs saved = osRepository.save(os);
         auditService.log("CHECKIN", "TechnicalOs", saved.getId(),
                 "Check-in realizado para o pet #" + pet.getId());
+
+        if (request.prepaidPayment() != null) {
+            recordPrepaidPayment(saved, request.prepaidPayment(), userId);
+        }
+
         eventPublisher.publishEvent(new OsCheckInEvent(this, saved.getId()));
-        return osMapper.toResponse(saved);
+        return osMapper.toResponse(osRepository.findById(saved.getId()).orElse(saved));
+    }
+
+    private void recordPrepaidPayment(TechnicalOs os, CheckInRequest.PrepaidPaymentRequest prepaid, Long userId) {
+        if (prepaid.amount().compareTo(os.getTotalPrice()) > 0) {
+            throw new BusinessException(
+                    "Pagamento antecipado (R$ " + prepaid.amount() +
+                    ") não pode exceder o valor total da OS (R$ " + os.getTotalPrice() + ")");
+        }
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("AppUser", userId));
+
+        PaymentEvent event = new PaymentEvent();
+        event.setTechnicalOs(os);
+        event.setAmount(prepaid.amount());
+        event.setMethod(prepaid.method());
+        event.setTransactionRef(prepaid.transactionRef());
+        event.setNotes("Pagamento antecipado registrado no check-in");
+        event.setCreatedBy(user);
+        paymentEventRepository.save(event);
+
+        os.setTotalPaid(prepaid.amount());
+        osRepository.save(os);
+
+        auditService.log("PAYMENT_RECORDED", "TechnicalOs", os.getId(),
+                "Prepaid: R$ " + prepaid.amount() + " via " + prepaid.method());
+        log.info("Prepaid payment of {} recorded for OS #{}", prepaid.amount(), os.getId());
     }
 
     @Transactional

@@ -13,7 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.cisnebranco.security.UserPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -79,7 +81,8 @@ public class AppointmentController {
     @PostMapping("/{id}/convert")
     public ResponseEntity<AppointmentResponse> convertToOs(
             @PathVariable Long id,
-            @Valid @RequestBody CheckInRequest request) {
-        return ResponseEntity.ok(appointmentService.convertToOs(id, request));
+            @Valid @RequestBody CheckInRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(appointmentService.convertToOs(id, request, principal.getId()));
     }
 }

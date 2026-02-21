@@ -21,7 +21,7 @@ public class BatchSyncService {
 
     private final TechnicalOsService osService;
 
-    public BatchSyncResponse processBatch(BatchSyncRequest request) {
+    public BatchSyncResponse processBatch(BatchSyncRequest request, Long userId) {
         List<BatchItemResult> checkInResults = new ArrayList<>();
         List<BatchItemResult> statusResults = new ArrayList<>();
 
@@ -29,7 +29,7 @@ public class BatchSyncService {
             for (int i = 0; i < request.checkIns().size(); i++) {
                 CheckInRequest checkIn = request.checkIns().get(i);
                 try {
-                    TechnicalOsResponse os = osService.checkIn(checkIn);
+                    TechnicalOsResponse os = osService.checkIn(checkIn, userId);
                     checkInResults.add(BatchItemResult.ok(i, os.id()));
                 } catch (ResourceNotFoundException | BusinessException e) {
                     log.warn("Batch check-in failed at index {}: {}", i, e.getMessage());
