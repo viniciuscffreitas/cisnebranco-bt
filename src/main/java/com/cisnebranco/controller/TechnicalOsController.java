@@ -44,8 +44,10 @@ public class TechnicalOsController {
 
     @Operation(summary = "Check in a pet and create a new service order")
     @PostMapping("/check-in")
-    public ResponseEntity<TechnicalOsResponse> checkIn(@Valid @RequestBody CheckInRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(osService.checkIn(request));
+    public ResponseEntity<TechnicalOsResponse> checkIn(
+            @Valid @RequestBody CheckInRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(osService.checkIn(request, principal.getId()));
     }
 
     @Operation(summary = "Update the status of a service order")

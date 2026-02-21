@@ -2,12 +2,14 @@ package com.cisnebranco.controller;
 
 import com.cisnebranco.dto.request.BatchSyncRequest;
 import com.cisnebranco.dto.response.BatchSyncResponse;
+import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.BatchSyncService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +25,9 @@ public class BatchSyncController {
 
     @Operation(summary = "Process a batch of offline operations")
     @PostMapping("/batch")
-    public ResponseEntity<BatchSyncResponse> sync(@Valid @RequestBody BatchSyncRequest request) {
-        return ResponseEntity.ok(batchSyncService.processBatch(request));
+    public ResponseEntity<BatchSyncResponse> sync(
+            @Valid @RequestBody BatchSyncRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(batchSyncService.processBatch(request, principal.getId()));
     }
 }

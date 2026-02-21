@@ -205,7 +205,7 @@ public class AppointmentService {
     }
 
     @Transactional
-    public AppointmentResponse convertToOs(Long appointmentId, CheckInRequest checkInRequest) {
+    public AppointmentResponse convertToOs(Long appointmentId, CheckInRequest checkInRequest, Long userId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment", appointmentId));
 
@@ -213,7 +213,7 @@ public class AppointmentService {
             throw new BusinessException("Appointment already converted to OS");
         }
 
-        var osResponse = osService.checkIn(checkInRequest);
+        var osResponse = osService.checkIn(checkInRequest, userId);
 
         // Link the OS to the appointment using a managed reference
         var os = technicalOsRepository.getReferenceById(osResponse.id());

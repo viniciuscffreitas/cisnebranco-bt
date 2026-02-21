@@ -97,10 +97,10 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         CheckInRequest request = new CheckInRequest(
                 testPet.getId(), testGroomer.getId(),
                 List.of(banhoService.getId(), tosaTesouraService.getId()),
-                "Test notes"
+                "Test notes", null
         );
 
-        TechnicalOsResponse response = osService.checkIn(request);
+        TechnicalOsResponse response = osService.checkIn(request, null);
 
         // BANHO R$50 + TOSA_TESOURA R$80 = R$130
         assertThat(response.totalPrice()).isEqualByComparingTo("130.00");
@@ -116,10 +116,10 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         CheckInRequest request = new CheckInRequest(
                 testPet.getId(), null,
                 List.of(banhoService.getId()),
-                null
+                null, null
         );
 
-        TechnicalOsResponse response = osService.checkIn(request);
+        TechnicalOsResponse response = osService.checkIn(request, null);
 
         assertThat(response.status()).isEqualTo(OsStatus.WAITING);
         assertThat(response.groomer()).isNull();
@@ -138,10 +138,10 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         petRepository.save(cat);
 
         CheckInRequest request = new CheckInRequest(
-                cat.getId(), null, List.of(banhoService.getId()), null
+                cat.getId(), null, List.of(banhoService.getId()), null, null
         );
 
-        assertThatThrownBy(() -> osService.checkIn(request))
+        assertThatThrownBy(() -> osService.checkIn(request, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("No pricing found");
     }
@@ -303,7 +303,7 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
     void adjustServiceItemPrice_happyPath_updatesTotalsAndItem() {
         TechnicalOsResponse os = osService.checkIn(new CheckInRequest(
                 testPet.getId(), testGroomer.getId(),
-                List.of(banhoService.getId(), tosaTesouraService.getId()), null));
+                List.of(banhoService.getId(), tosaTesouraService.getId()), null, null), null);
         Long osId = os.id();
         osService.updateStatus(osId, new OsStatusUpdateRequest(OsStatus.IN_PROGRESS));
 
@@ -423,7 +423,7 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         petRepository.save(testPet);
 
         TechnicalOsResponse response = osService.checkIn(new CheckInRequest(
-                testPet.getId(), null, List.of(banhoService.getId()), null));
+                testPet.getId(), null, List.of(banhoService.getId()), null, null), null);
 
         assertThat(response.totalPrice()).isEqualByComparingTo("75.00");
         assertThat(response.serviceItems()).singleElement()
@@ -446,7 +446,7 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
 
         // No ServiceTypeBreedPrice configured for this breed — must use PricingMatrix (R$50.00)
         TechnicalOsResponse response = osService.checkIn(new CheckInRequest(
-                testPet.getId(), null, List.of(banhoService.getId()), null));
+                testPet.getId(), null, List.of(banhoService.getId()), null, null), null);
 
         assertThat(response.totalPrice()).isEqualByComparingTo("50.00");
         assertThat(response.serviceItems()).singleElement()
@@ -459,7 +459,7 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
         assertThat(testPet.getBreed()).isNull();
 
         TechnicalOsResponse response = osService.checkIn(new CheckInRequest(
-                testPet.getId(), null, List.of(banhoService.getId()), null));
+                testPet.getId(), null, List.of(banhoService.getId()), null, null), null);
 
         assertThat(response.totalPrice()).isEqualByComparingTo("50.00");
     }
@@ -469,9 +469,9 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
     private Long createOsInStatus(OsStatus targetStatus) {
         CheckInRequest request = new CheckInRequest(
                 testPet.getId(), testGroomer.getId(),
-                List.of(banhoService.getId()), null
+                List.of(banhoService.getId()), null, null
         );
-        TechnicalOsResponse os = osService.checkIn(request);
+        TechnicalOsResponse os = osService.checkIn(request, null);
         Long osId = os.id();
 
         // checkIn creates OS in WAITING
@@ -498,9 +498,9 @@ class TechnicalOsServiceTest extends BaseIntegrationTest {
     private Long createOsWithGroomer(Groomer groomer) {
         CheckInRequest request = new CheckInRequest(
                 testPet.getId(), groomer.getId(),
-                List.of(banhoService.getId()), null
+                List.of(banhoService.getId()), null, null
         );
-        return osService.checkIn(request).id();
+        return osService.checkIn(request, null).id();
     }
 
     private void addPhotos(Long osId, int count) {

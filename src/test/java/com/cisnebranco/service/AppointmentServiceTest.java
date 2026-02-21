@@ -394,7 +394,7 @@ class AppointmentServiceTest extends BaseIntegrationTest {
                 new AppointmentUpdateRequest(null, AppointmentStatus.CONFIRMED, null, null));
 
         AppointmentResponse completed = appointmentService.convertToOs(created.id(),
-                new CheckInRequest(pet.getId(), groomer.getId(), List.of(serviceType.getId()), null));
+                new CheckInRequest(pet.getId(), groomer.getId(), List.of(serviceType.getId()), null, null), null);
 
         assertThat(completed.technicalOsId()).isNotNull();
         assertThat(completed.status()).isEqualTo(AppointmentStatus.COMPLETED);
