@@ -199,6 +199,9 @@ public class TechnicalOsService {
             throw new BusinessException("Invalid status transition: " + currentStatus + " → " + newStatus);
         }
 
+        if (newStatus == OsStatus.IN_PROGRESS) {
+            validateInProgressRequirements(os);
+        }
         if (newStatus == OsStatus.READY) {
             validateReadyRequirements(os);
         }
@@ -463,6 +466,14 @@ public class TechnicalOsService {
                 .orElseThrow(() -> new BusinessException(
                         "No pricing found for service " + serviceType.getName()
                         + " / " + pet.getSpecies() + " / " + pet.getSize()));
+    }
+
+    private void validateInProgressRequirements(TechnicalOs os) {
+        long photoCount = photoRepository.countByTechnicalOsId(os.getId());
+        if (photoCount == 0) {
+            throw new BusinessException(
+                    "É necessário registrar pelo menos 1 foto da inspeção antes de iniciar o atendimento.");
+        }
     }
 
     private void validateReadyRequirements(TechnicalOs os) {
