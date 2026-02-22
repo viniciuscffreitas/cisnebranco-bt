@@ -84,6 +84,9 @@ public class TechnicalOs extends BaseEntity {
     @OneToOne(mappedBy = "technicalOs", cascade = CascadeType.ALL, orphanRemoval = true)
     private HealthChecklist healthChecklist;
 
+    @OneToOne(mappedBy = "technicalOs", fetch = FetchType.LAZY)
+    private Appointment appointment;
+
     public BigDecimal getBalance() {
         if (balance != null) return balance;
         return totalPrice.subtract(totalCommission);

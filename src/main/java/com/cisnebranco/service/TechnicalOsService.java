@@ -327,7 +327,9 @@ public class TechnicalOsService {
 
     @Transactional(readOnly = true)
     public TechnicalOsResponse findById(Long id) {
-        return osMapper.toResponse(findEntityById(id));
+        TechnicalOs os = osRepository.findByIdWithPetClientAndServices(id)
+                .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", id));
+        return osMapper.toResponse(os);
     }
 
     @Transactional(readOnly = true)

@@ -12,6 +12,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", uses = {PetMapper.class, GroomerMapper.class, HealthChecklistMapper.class, PaymentEventMapper.class, InspectionPhotoMapper.class})
 public interface TechnicalOsMapper {
 
+    @Mapping(target = "scheduledStart", source = "appointment.scheduledStart")
     TechnicalOsResponse toResponse(TechnicalOs os);
 
     TechnicalOsGroomerViewResponse toGroomerViewResponse(TechnicalOs os);

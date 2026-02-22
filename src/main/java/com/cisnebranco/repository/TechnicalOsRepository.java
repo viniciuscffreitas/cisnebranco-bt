@@ -20,35 +20,38 @@ import java.util.Optional;
 
 public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long>, JpaSpecificationExecutor<TechnicalOs> {
 
-    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist", "appointment"})
     Page<TechnicalOs> findAll(Specification<TechnicalOs> spec, Pageable pageable);
 
-    @Query("SELECT os FROM TechnicalOs os JOIN FETCH os.pet p JOIN FETCH p.client WHERE os.id = :id")
+    @Query("SELECT os FROM TechnicalOs os JOIN FETCH os.pet p JOIN FETCH p.client LEFT JOIN FETCH os.appointment WHERE os.id = :id")
     Optional<TechnicalOs> findByIdWithPetAndClient(@Param("id") Long id);
 
     @Query("SELECT os FROM TechnicalOs os JOIN FETCH os.pet p JOIN FETCH p.client " +
+           "LEFT JOIN FETCH os.groomer " +
            "LEFT JOIN FETCH os.serviceItems si LEFT JOIN FETCH si.serviceType " +
+           "LEFT JOIN FETCH os.healthChecklist " +
+           "LEFT JOIN FETCH os.appointment " +
            "WHERE os.id = :id")
     Optional<TechnicalOs> findByIdWithPetClientAndServices(@Param("id") Long id);
 
-    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist", "appointment"})
     @Query("SELECT os FROM TechnicalOs os")
     List<TechnicalOs> findAllWithDetails();
 
-    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist", "appointment"})
     @Query("SELECT os FROM TechnicalOs os")
     Page<TechnicalOs> findAllWithDetails(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist", "appointment"})
     @Query("SELECT os FROM TechnicalOs os WHERE os.groomer.id = :groomerId")
     List<TechnicalOs> findByGroomerIdWithDetails(@Param("groomerId") Long groomerId);
 
-    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist"})
+    @EntityGraph(attributePaths = {"pet", "pet.client", "groomer", "serviceItems", "serviceItems.serviceType", "healthChecklist", "appointment"})
     @Query("SELECT os FROM TechnicalOs os WHERE os.groomer.id = :groomerId")
     Page<TechnicalOs> findByGroomerIdWithDetails(@Param("groomerId") Long groomerId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT os FROM TechnicalOs os WHERE os.id = :id")
+    @Query("SELECT os FROM TechnicalOs os LEFT JOIN FETCH os.appointment WHERE os.id = :id")
     Optional<TechnicalOs> findByIdForUpdate(@Param("id") Long id);
 
     List<TechnicalOs> findByStatus(OsStatus status);
