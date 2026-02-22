@@ -26,5 +26,6 @@ public record TechnicalOsResponse(
         List<InspectionPhotoResponse> photos,
         List<PaymentEventResponse> paymentEvents,
         HealthChecklistResponse healthChecklist,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime scheduledStart
 ) {}
