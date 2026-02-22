@@ -27,7 +27,9 @@ public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long>,
     Optional<TechnicalOs> findByIdWithPetAndClient(@Param("id") Long id);
 
     @Query("SELECT os FROM TechnicalOs os JOIN FETCH os.pet p JOIN FETCH p.client " +
+           "LEFT JOIN FETCH os.groomer " +
            "LEFT JOIN FETCH os.serviceItems si LEFT JOIN FETCH si.serviceType " +
+           "LEFT JOIN FETCH os.healthChecklist " +
            "LEFT JOIN FETCH os.appointment " +
            "WHERE os.id = :id")
     Optional<TechnicalOs> findByIdWithPetClientAndServices(@Param("id") Long id);
@@ -49,7 +51,7 @@ public interface TechnicalOsRepository extends JpaRepository<TechnicalOs, Long>,
     Page<TechnicalOs> findByGroomerIdWithDetails(@Param("groomerId") Long groomerId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT os FROM TechnicalOs os WHERE os.id = :id")
+    @Query("SELECT os FROM TechnicalOs os LEFT JOIN FETCH os.appointment WHERE os.id = :id")
     Optional<TechnicalOs> findByIdForUpdate(@Param("id") Long id);
 
     List<TechnicalOs> findByStatus(OsStatus status);
