@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/os")
@@ -131,6 +132,28 @@ public class TechnicalOsController {
             @AuthenticationPrincipal UserPrincipal principal) {
         osService.enforceAccess(osId, principal);
         return ResponseEntity.ok(osService.adjustServiceItemPrice(osId, itemId, request));
+    }
+
+    @Operation(summary = "Add a service to an existing service order")
+    @PostMapping("/{id}/services")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TechnicalOsResponse> addService(
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> body) {
+        Long serviceTypeId = body.get("serviceTypeId");
+        if (serviceTypeId == null) {
+            throw new BusinessException("serviceTypeId is required");
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(osService.addServiceItem(id, serviceTypeId));
+    }
+
+    @Operation(summary = "Remove a service from an existing service order")
+    @DeleteMapping("/{id}/services/{itemId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TechnicalOsResponse> removeService(
+            @PathVariable Long id,
+            @PathVariable Long itemId) {
+        return ResponseEntity.ok(osService.removeServiceItem(id, itemId));
     }
 
     // --- Health checklist ---
