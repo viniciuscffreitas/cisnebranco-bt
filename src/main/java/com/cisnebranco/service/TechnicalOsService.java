@@ -311,7 +311,8 @@ public class TechnicalOsService {
 
     @Transactional
     public TechnicalOsResponse addServiceItem(Long osId, Long serviceTypeId) {
-        TechnicalOs os = findEntityById(osId);
+        TechnicalOs os = osRepository.findByIdForUpdate(osId)
+                .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
 
         if (!SERVICE_EDITABLE_STATUSES.contains(os.getStatus())) {
             throw new BusinessException(
@@ -321,6 +322,12 @@ public class TechnicalOsService {
 
         ServiceType serviceType = serviceTypeRepository.findByIdAndActiveTrue(serviceTypeId)
                 .orElseThrow(() -> new ResourceNotFoundException("ServiceType", serviceTypeId));
+
+        boolean alreadyExists = os.getServiceItems().stream()
+                .anyMatch(i -> i.getServiceType().getId().equals(serviceTypeId));
+        if (alreadyExists) {
+            throw new BusinessException("Serviço '" + serviceType.getName() + "' já existe nesta OS.");
+        }
 
         BigDecimal lockedPrice = resolveLockedPrice(serviceTypeId, serviceType, os.getPet());
         BigDecimal commissionValue = lockedPrice
@@ -363,7 +370,8 @@ public class TechnicalOsService {
 
     @Transactional
     public TechnicalOsResponse removeServiceItem(Long osId, Long itemId) {
-        TechnicalOs os = findEntityById(osId);
+        TechnicalOs os = osRepository.findByIdForUpdate(osId)
+                .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
 
         if (!SERVICE_EDITABLE_STATUSES.contains(os.getStatus())) {
             throw new BusinessException(
@@ -385,7 +393,16 @@ public class TechnicalOsService {
         BigDecimal removedCommission = item.getCommissionValue();
 
         os.getServiceItems().remove(item);
-        os.setTotalPrice(os.getTotalPrice().subtract(removedPrice));
+
+        BigDecimal newTotalPrice = os.getTotalPrice().subtract(removedPrice);
+        if (os.getTotalPaid().compareTo(newTotalPrice) > 0) {
+            throw new BusinessException(
+                "Não é possível remover este serviço: o valor já pago (R$ "
+                + os.getTotalPaid().toPlainString()
+                + ") excede o novo total (R$ "
+                + newTotalPrice.toPlainString() + ")");
+        }
+        os.setTotalPrice(newTotalPrice);
         os.setTotalCommission(os.getTotalCommission().subtract(removedCommission));
 
         TechnicalOs saved = osRepository.save(os);
