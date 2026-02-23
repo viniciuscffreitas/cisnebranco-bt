@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 public record IncidentMediaResponse(
     Long id,
-    String filePath,
+    String url,
     String contentType,
     LocalDateTime createdAt
 ) {}

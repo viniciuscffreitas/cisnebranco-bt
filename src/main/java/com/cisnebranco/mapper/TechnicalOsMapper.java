@@ -9,11 +9,10 @@ import com.cisnebranco.entity.TechnicalOs;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring", uses = {PetMapper.class, GroomerMapper.class, HealthChecklistMapper.class, PaymentEventMapper.class, InspectionPhotoMapper.class, IncidentReportMapper.class})
+@Mapper(componentModel = "spring", uses = {PetMapper.class, GroomerMapper.class, HealthChecklistMapper.class, PaymentEventMapper.class, InspectionPhotoMapper.class})
 public interface TechnicalOsMapper {
 
     @Mapping(target = "scheduledStart", source = "appointment.scheduledStart")
-    @Mapping(target = "incidentCount", expression = "java(os.getIncidentReports() != null ? os.getIncidentReports().size() : 0)")
     TechnicalOsResponse toResponse(TechnicalOs os);
 
     TechnicalOsGroomerViewResponse toGroomerViewResponse(TechnicalOs os);

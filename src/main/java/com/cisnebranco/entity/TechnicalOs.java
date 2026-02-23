@@ -16,6 +16,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Formula;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -81,8 +82,8 @@ public class TechnicalOs extends BaseEntity {
     @OneToMany(mappedBy = "technicalOs", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InspectionPhoto> photos = new ArrayList<>();
 
-    @OneToMany(mappedBy = "technicalOs")
-    private List<IncidentReport> incidentReports = new ArrayList<>();
+    @Formula("(SELECT COUNT(*) FROM incident_reports ir WHERE ir.technical_os_id = id)")
+    private int incidentCount;
 
     @OneToOne(mappedBy = "technicalOs", cascade = CascadeType.ALL, orphanRemoval = true)
     private HealthChecklist healthChecklist;

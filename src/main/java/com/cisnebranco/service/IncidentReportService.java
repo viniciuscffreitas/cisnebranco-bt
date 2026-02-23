@@ -63,6 +63,10 @@ public class IncidentReportService {
                     "Incidents can only be reported when the OS is IN_PROGRESS, READY, or DELIVERED");
         }
 
+        if (request.description() == null || request.description().isBlank()) {
+            throw new BusinessException("Incident description is required");
+        }
+
         IncidentCategory category;
         try {
             category = IncidentCategory.valueOf(request.category());
@@ -128,6 +132,7 @@ public class IncidentReportService {
 
             return incidentMapper.toResponse(saved);
         } catch (Exception e) {
+            log.error("Failed to save incident report for OS {}: {}", osId, e.getMessage(), e);
             cleanupFiles(savedFiles);
             throw e;
         }
