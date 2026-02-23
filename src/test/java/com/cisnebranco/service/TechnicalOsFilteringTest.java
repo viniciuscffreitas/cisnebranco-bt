@@ -89,7 +89,7 @@ class TechnicalOsFilteringTest extends BaseIntegrationTest {
         osService.checkIn(new CheckInRequest(pet2.getId(), groomer2.getId(), List.of(banho.getId()), null, null), null);
 
         Page<TechnicalOsResponse> results = osService.findByFilters(
-                new TechnicalOsFilterRequest(null, groomer1.getId(), null, null, null, null),
+                new TechnicalOsFilterRequest(null, groomer1.getId(), null, null, null, null, null),
                 PageRequest.of(0, 10));
 
         assertThat(results.getContent()).hasSize(1);
@@ -101,7 +101,7 @@ class TechnicalOsFilteringTest extends BaseIntegrationTest {
         osService.checkIn(new CheckInRequest(pet1.getId(), groomer1.getId(), List.of(banho.getId()), null, null), null);
 
         Page<TechnicalOsResponse> results = osService.findByFilters(
-                new TechnicalOsFilterRequest(OsStatus.WAITING, null, null, null, null, null),
+                new TechnicalOsFilterRequest(OsStatus.WAITING, null, null, null, null, null, null),
                 PageRequest.of(0, 10));
 
         assertThat(results.getContent()).isNotEmpty();
@@ -115,7 +115,7 @@ class TechnicalOsFilteringTest extends BaseIntegrationTest {
         osService.checkIn(new CheckInRequest(pet2.getId(), groomer2.getId(), List.of(banho.getId()), null, null), null);
 
         Page<TechnicalOsResponse> results = osService.findByFilters(
-                new TechnicalOsFilterRequest(null, null, null, null, null, null),
+                new TechnicalOsFilterRequest(null, null, null, null, null, null, null),
                 PageRequest.of(0, 10));
 
         assertThat(results.getContent().size()).isGreaterThanOrEqualTo(2);
@@ -126,7 +126,7 @@ class TechnicalOsFilteringTest extends BaseIntegrationTest {
         osService.checkIn(new CheckInRequest(pet1.getId(), null, List.of(banho.getId()), null, null), null);
 
         Page<TechnicalOsResponse> results = osService.findByFilters(
-                new TechnicalOsFilterRequest(null, null, null, null, null, null),
+                new TechnicalOsFilterRequest(null, null, null, null, null, null, null),
                 PageRequest.of(0, 10));
 
         assertThat(results.getContent()).isNotEmpty();
