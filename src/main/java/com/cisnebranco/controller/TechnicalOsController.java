@@ -3,11 +3,13 @@ package com.cisnebranco.controller;
 import com.cisnebranco.dto.request.AddServiceItemRequest;
 import com.cisnebranco.dto.request.AdjustServiceItemPriceRequest;
 import com.cisnebranco.dto.request.CheckInRequest;
+import com.cisnebranco.dto.request.CreateIncidentRequest;
 import com.cisnebranco.dto.request.HealthChecklistRequest;
 import com.cisnebranco.dto.request.OsStatusUpdateRequest;
 import com.cisnebranco.dto.request.TechnicalOsFilterRequest;
 import com.cisnebranco.dto.response.AuditLogResponse;
 import com.cisnebranco.dto.response.HealthChecklistResponse;
+import com.cisnebranco.dto.response.IncidentReportResponse;
 import com.cisnebranco.dto.response.InspectionPhotoResponse;
 import com.cisnebranco.dto.response.TechnicalOsGroomerViewResponse;
 import com.cisnebranco.dto.response.TechnicalOsResponse;
@@ -15,6 +17,7 @@ import com.cisnebranco.entity.enums.UserRole;
 import com.cisnebranco.exception.BusinessException;
 import com.cisnebranco.security.UserPrincipal;
 import com.cisnebranco.service.HealthChecklistService;
+import com.cisnebranco.service.IncidentReportService;
 import com.cisnebranco.service.InspectionPhotoService;
 import com.cisnebranco.service.TechnicalOsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +28,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -42,6 +46,7 @@ public class TechnicalOsController {
     private final TechnicalOsService osService;
     private final InspectionPhotoService photoService;
     private final HealthChecklistService checklistService;
+    private final IncidentReportService incidentService;
 
     @Operation(summary = "Check in a pet and create a new service order")
     @PostMapping("/check-in")
@@ -151,6 +156,31 @@ public class TechnicalOsController {
             @PathVariable Long id,
             @PathVariable Long itemId) {
         return ResponseEntity.ok(osService.removeServiceItem(id, itemId));
+    }
+
+    // --- Incidents ---
+
+    @Operation(summary = "Report an incident during service")
+    @PostMapping(value = "/{id}/incidents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<IncidentReportResponse> createIncident(
+            @PathVariable Long id,
+            @RequestPart("category") String category,
+            @RequestPart("description") String description,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        osService.enforceAccess(id, principal);
+        var request = new CreateIncidentRequest(category, description);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(incidentService.create(id, request, files, principal.getUsername()));
+    }
+
+    @Operation(summary = "List incidents for a service order")
+    @GetMapping("/{id}/incidents")
+    public ResponseEntity<List<IncidentReportResponse>> getIncidents(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        osService.enforceAccess(id, principal);
+        return ResponseEntity.ok(incidentService.findByOs(id));
     }
 
     // --- Health checklist ---
