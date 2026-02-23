@@ -27,5 +27,6 @@ public record TechnicalOsResponse(
         List<PaymentEventResponse> paymentEvents,
         HealthChecklistResponse healthChecklist,
         LocalDateTime createdAt,
+        int incidentCount,
         LocalDateTime scheduledStart
 ) {}

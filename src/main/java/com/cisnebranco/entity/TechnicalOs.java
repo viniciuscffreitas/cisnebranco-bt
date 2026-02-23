@@ -81,6 +81,9 @@ public class TechnicalOs extends BaseEntity {
     @OneToMany(mappedBy = "technicalOs", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InspectionPhoto> photos = new ArrayList<>();
 
+    @OneToMany(mappedBy = "technicalOs")
+    private List<IncidentReport> incidentReports = new ArrayList<>();
+
     @OneToOne(mappedBy = "technicalOs", cascade = CascadeType.ALL, orphanRemoval = true)
     private HealthChecklist healthChecklist;
 
