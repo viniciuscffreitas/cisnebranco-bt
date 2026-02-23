@@ -1,5 +1,6 @@
 package com.cisnebranco.controller;
 
+import com.cisnebranco.dto.request.AddServiceItemRequest;
 import com.cisnebranco.dto.request.AdjustServiceItemPriceRequest;
 import com.cisnebranco.dto.request.CheckInRequest;
 import com.cisnebranco.dto.request.HealthChecklistRequest;
@@ -131,6 +132,25 @@ public class TechnicalOsController {
             @AuthenticationPrincipal UserPrincipal principal) {
         osService.enforceAccess(osId, principal);
         return ResponseEntity.ok(osService.adjustServiceItemPrice(osId, itemId, request));
+    }
+
+    @Operation(summary = "Add a service to an existing service order")
+    @PostMapping("/{id}/services")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TechnicalOsResponse> addService(
+            @PathVariable Long id,
+            @Valid @RequestBody AddServiceItemRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(osService.addServiceItem(id, request.serviceTypeId()));
+    }
+
+    @Operation(summary = "Remove a service from an existing service order")
+    @DeleteMapping("/{id}/services/{itemId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TechnicalOsResponse> removeService(
+            @PathVariable Long id,
+            @PathVariable Long itemId) {
+        return ResponseEntity.ok(osService.removeServiceItem(id, itemId));
     }
 
     // --- Health checklist ---

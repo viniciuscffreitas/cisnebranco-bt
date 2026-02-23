@@ -65,6 +65,9 @@ public class TechnicalOsService {
     private static final Set<OsStatus> GROOMER_ASSIGNABLE_STATUSES =
             EnumSet.of(OsStatus.SCHEDULED, OsStatus.WAITING);
 
+    private static final Set<OsStatus> SERVICE_EDITABLE_STATUSES =
+            EnumSet.of(OsStatus.SCHEDULED, OsStatus.WAITING, OsStatus.IN_PROGRESS);
+
     private static final Map<OsStatus, OsStatus> VALID_TRANSITIONS = Map.of(
             OsStatus.SCHEDULED, OsStatus.WAITING,
             OsStatus.WAITING, OsStatus.IN_PROGRESS,
@@ -299,6 +302,125 @@ public class TechnicalOsService {
                 } catch (Exception e) {
                     log.error("Failed to broadcast SSE event for groomer assignment on OS {} (groomerId={})",
                             osId, groomerId, e);
+                }
+            }
+        });
+
+        return response;
+    }
+
+    @Transactional
+    public TechnicalOsResponse addServiceItem(Long osId, Long serviceTypeId) {
+        TechnicalOs os = osRepository.findByIdForUpdate(osId)
+                .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
+
+        if (!SERVICE_EDITABLE_STATUSES.contains(os.getStatus())) {
+            throw new BusinessException(
+                    "Serviços só podem ser adicionados em status SCHEDULED, WAITING ou IN_PROGRESS (atual: "
+                    + os.getStatus() + ")");
+        }
+
+        ServiceType serviceType = serviceTypeRepository.findByIdAndActiveTrue(serviceTypeId)
+                .orElseThrow(() -> new ResourceNotFoundException("ServiceType", serviceTypeId));
+
+        boolean alreadyExists = os.getServiceItems().stream()
+                .anyMatch(i -> i.getServiceType().getId().equals(serviceTypeId));
+        if (alreadyExists) {
+            throw new BusinessException("Serviço '" + serviceType.getName() + "' já existe nesta OS.");
+        }
+
+        BigDecimal lockedPrice = resolveLockedPrice(serviceTypeId, serviceType, os.getPet());
+        BigDecimal commissionValue = lockedPrice
+                .multiply(serviceType.getCommissionRate())
+                .setScale(2, RoundingMode.HALF_UP);
+
+        OsServiceItem item = new OsServiceItem();
+        item.setTechnicalOs(os);
+        item.setServiceType(serviceType);
+        item.setLockedPrice(lockedPrice);
+        item.setLockedCommissionRate(serviceType.getCommissionRate());
+        item.setCommissionValue(commissionValue);
+
+        os.getServiceItems().add(item);
+        os.setTotalPrice(os.getTotalPrice().add(lockedPrice));
+        os.setTotalCommission(os.getTotalCommission().add(commissionValue));
+
+        TechnicalOs saved = osRepository.save(os);
+        osRepository.flush();
+        entityManager.refresh(saved);
+
+        auditService.log("SERVICE_ADDED", "TechnicalOs", osId,
+                "Serviço adicionado: " + serviceType.getName() + " (R$ " + lockedPrice.toPlainString() + ")");
+
+        TechnicalOsResponse response = osMapper.toResponse(saved);
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    sseEmitterService.sendToAll("os-status-changed", Map.of("osId", osId));
+                } catch (Exception e) {
+                    log.error("Failed to broadcast SSE event for service addition on OS {}", osId, e);
+                }
+            }
+        });
+
+        return response;
+    }
+
+    @Transactional
+    public TechnicalOsResponse removeServiceItem(Long osId, Long itemId) {
+        TechnicalOs os = osRepository.findByIdForUpdate(osId)
+                .orElseThrow(() -> new ResourceNotFoundException("TechnicalOs", osId));
+
+        if (!SERVICE_EDITABLE_STATUSES.contains(os.getStatus())) {
+            throw new BusinessException(
+                    "Serviços só podem ser removidos em status SCHEDULED, WAITING ou IN_PROGRESS (atual: "
+                    + os.getStatus() + ")");
+        }
+
+        if (os.getServiceItems().size() <= 1) {
+            throw new BusinessException("A OS deve ter pelo menos 1 serviço.");
+        }
+
+        OsServiceItem item = os.getServiceItems().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("OsServiceItem", itemId));
+
+        String serviceName = item.getServiceType().getName();
+        BigDecimal removedPrice = item.getLockedPrice();
+        BigDecimal removedCommission = item.getCommissionValue();
+
+        os.getServiceItems().remove(item);
+
+        BigDecimal newTotalPrice = os.getTotalPrice().subtract(removedPrice);
+        if (os.getTotalPaid().compareTo(newTotalPrice) > 0) {
+            throw new BusinessException(
+                "Não é possível remover este serviço: o valor já pago (R$ "
+                + os.getTotalPaid().toPlainString()
+                + ") excede o novo total (R$ "
+                + newTotalPrice.toPlainString() + ")");
+        }
+        os.setTotalPrice(newTotalPrice);
+        os.setTotalCommission(os.getTotalCommission().subtract(removedCommission));
+
+        TechnicalOs saved = osRepository.save(os);
+        osRepository.flush();
+        entityManager.refresh(saved);
+
+        auditService.log("SERVICE_REMOVED", "TechnicalOs", osId,
+                "Serviço removido: " + serviceName + " (R$ " + removedPrice.toPlainString() + ")");
+
+        TechnicalOsResponse response = osMapper.toResponse(saved);
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    sseEmitterService.sendToAll("os-status-changed", Map.of("osId", osId));
+                } catch (Exception e) {
+                    log.error("Failed to broadcast SSE event for service removal on OS {}", osId, e);
                 }
             }
         });
