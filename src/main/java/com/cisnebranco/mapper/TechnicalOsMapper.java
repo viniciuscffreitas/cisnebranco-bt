@@ -19,6 +19,7 @@ public interface TechnicalOsMapper {
 
     @Mapping(source = "serviceType.id", target = "serviceTypeId")
     @Mapping(source = "serviceType.name", target = "serviceTypeName")
+    @Mapping(source = "serviceType.defaultDurationMinutes", target = "defaultDurationMinutes")
     OsServiceItemResponse toServiceItemResponse(OsServiceItem item);
 
     @Mapping(source = "serviceType.name", target = "serviceTypeName")

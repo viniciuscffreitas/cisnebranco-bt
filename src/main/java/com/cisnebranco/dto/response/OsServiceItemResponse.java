@@ -8,5 +8,6 @@ public record OsServiceItemResponse(
         String serviceTypeName,
         BigDecimal lockedPrice,
         BigDecimal lockedCommissionRate,
-        BigDecimal commissionValue
+        BigDecimal commissionValue,
+        Integer defaultDurationMinutes
 ) {}
