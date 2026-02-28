@@ -18,9 +18,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 @Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
+
+    private static final Pattern UPLOAD_PATTERN =
+            Pattern.compile("/os/\\d+/(photos|checklist)(/.*)?");
 
     private final int requestsPerMinute;
     private final int authRequestsPerMinute;
@@ -103,10 +107,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (path.startsWith("/auth/")) {
             return new RateCategory("auth", authRequestsPerMinute);
         }
-        if (path.matches("/os/\\d+/photos.*") || path.matches("/os/\\d+/checklist.*")) {
+        if (UPLOAD_PATTERN.matcher(path).matches()) {
             return new RateCategory("upload", uploadRequestsPerMinute);
         }
-        if (path.startsWith("/reports")) {
+        if (path.startsWith("/reports/") || path.equals("/reports")) {
             return new RateCategory("report", reportRequestsPerMinute);
         }
         return new RateCategory("general", requestsPerMinute);

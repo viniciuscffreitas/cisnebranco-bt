@@ -1,9 +1,12 @@
 package com.cisnebranco.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.util.List;
 
@@ -265,5 +268,60 @@ class RateLimitFilterTest {
         assertThat(filter.resolveCategory("/os/1/photos").limit()).isEqualTo(5);
         assertThat(filter.resolveCategory("/reports/daily").limit()).isEqualTo(10);
         assertThat(filter.resolveCategory("/clients").limit()).isEqualTo(60);
+    }
+
+    @Test
+    void resolveCategory_nonNumericOsId_returnsGeneral() {
+        assertThat(filter.resolveCategory("/os/abc/photos").name()).isEqualTo("general");
+        assertThat(filter.resolveCategory("/os/abc/checklist").name()).isEqualTo("general");
+    }
+
+    @Test
+    void resolveCategory_authWithoutTrailingSlash_returnsGeneral() {
+        assertThat(filter.resolveCategory("/auth").name()).isEqualTo("general");
+    }
+
+    @Test
+    void resolveCategory_reportsPrefixWithoutSlash_returnsGeneral() {
+        // /reports-admin should NOT match the report category
+        assertThat(filter.resolveCategory("/reports-admin").name()).isEqualTo("general");
+    }
+
+    @Test
+    void resolveCategory_checklistSubpath_returnsUpload() {
+        assertThat(filter.resolveCategory("/os/123/checklist/items").name()).isEqualTo("upload");
+    }
+
+    // --- Integration: separate buckets per category ---
+
+    @Test
+    void doFilter_sameIp_differentCategories_useSeparateBuckets() throws Exception {
+        RateLimitFilter testFilter = new RateLimitFilter(
+                2, 2, 2, 2, List.of(), new ObjectMapper());
+        FilterChain chain = new MockFilterChain();
+
+        // Exhaust auth bucket (2 requests)
+        for (int i = 0; i < 2; i++) {
+            MockHttpServletRequest req = new MockHttpServletRequest("POST", "/auth/login");
+            req.setServletPath("/auth/login");
+            req.setRemoteAddr("1.2.3.4");
+            testFilter.doFilterInternal(req, new MockHttpServletResponse(), chain);
+        }
+
+        // Auth should be exhausted
+        MockHttpServletRequest authReq = new MockHttpServletRequest("POST", "/auth/login");
+        authReq.setServletPath("/auth/login");
+        authReq.setRemoteAddr("1.2.3.4");
+        MockHttpServletResponse authResp = new MockHttpServletResponse();
+        testFilter.doFilterInternal(authReq, authResp, chain);
+        assertThat(authResp.getStatus()).isEqualTo(429);
+
+        // General bucket should still be available for same IP
+        MockHttpServletRequest generalReq = new MockHttpServletRequest("GET", "/clients");
+        generalReq.setServletPath("/clients");
+        generalReq.setRemoteAddr("1.2.3.4");
+        MockHttpServletResponse generalResp = new MockHttpServletResponse();
+        testFilter.doFilterInternal(generalReq, generalResp, chain);
+        assertThat(generalResp.getStatus()).isEqualTo(200);
     }
 }
