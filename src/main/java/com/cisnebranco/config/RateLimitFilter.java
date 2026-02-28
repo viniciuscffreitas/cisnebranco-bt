@@ -18,12 +18,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 @Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
 
+    private static final Pattern UPLOAD_PATTERN =
+            Pattern.compile("/os/\\d+/(photos|checklist)(/.*)?");
+
     private final int requestsPerMinute;
     private final int authRequestsPerMinute;
+    private final int uploadRequestsPerMinute;
+    private final int reportRequestsPerMinute;
     private final List<String> trustedProxyCidrs;
     private final ObjectMapper objectMapper;
     private final Map<String, TokenBucket> buckets = new ConcurrentHashMap<>();
@@ -31,10 +37,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public RateLimitFilter(
             int requestsPerMinute,
             int authRequestsPerMinute,
+            int uploadRequestsPerMinute,
+            int reportRequestsPerMinute,
             List<String> trustedProxyCidrs,
             ObjectMapper objectMapper) {
         this.requestsPerMinute = requestsPerMinute;
         this.authRequestsPerMinute = authRequestsPerMinute;
+        this.uploadRequestsPerMinute = uploadRequestsPerMinute;
+        this.reportRequestsPerMinute = reportRequestsPerMinute;
         this.trustedProxyCidrs = trustedProxyCidrs;
         this.objectMapper = objectMapper;
 
@@ -49,8 +59,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                      "Set RATE_LIMIT_TRUSTED_CIDRS if running behind a reverse proxy.");
         }
 
-        log.info("Rate limiting enabled: {} req/min general, {} req/min auth, trusted proxies: {}",
-                requestsPerMinute, authRequestsPerMinute, trustedProxyCidrs);
+        log.info("Rate limiting enabled: {} req/min general, {} req/min auth, {} req/min upload, {} req/min report, trusted proxies: {}",
+                requestsPerMinute, authRequestsPerMinute, uploadRequestsPerMinute, reportRequestsPerMinute, trustedProxyCidrs);
     }
 
     @Override
@@ -59,11 +69,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String clientIp = getClientIp(request);
         String path = request.getServletPath();
 
-        boolean isAuth = path.startsWith("/auth/");
-        int limit = isAuth ? authRequestsPerMinute : requestsPerMinute;
-        String key = clientIp + ":" + (isAuth ? "auth" : "general");
+        RateCategory category = resolveCategory(path);
+        String key = clientIp + ":" + category.name();
 
-        TokenBucket bucket = buckets.computeIfAbsent(key, k -> new TokenBucket(limit));
+        TokenBucket bucket = buckets.computeIfAbsent(key, k -> new TokenBucket(category.limit()));
 
         if (!bucket.tryConsume()) {
             log.warn("Rate limit exceeded: ip={}, path={}, key={}", clientIp, path, key);
@@ -86,6 +95,25 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
         return path.startsWith("/actuator/") || path.startsWith("/swagger-ui/") || path.startsWith("/api-docs/");
+    }
+
+    /**
+     * Resolves the rate-limit category and limit for a given servlet path.
+     * Categories are checked in specificity order: most restrictive patterns first.
+     */
+    private record RateCategory(String name, int limit) {}
+
+    RateCategory resolveCategory(String path) {
+        if (path.startsWith("/auth/")) {
+            return new RateCategory("auth", authRequestsPerMinute);
+        }
+        if (UPLOAD_PATTERN.matcher(path).matches()) {
+            return new RateCategory("upload", uploadRequestsPerMinute);
+        }
+        if (path.startsWith("/reports/") || path.equals("/reports")) {
+            return new RateCategory("report", reportRequestsPerMinute);
+        }
+        return new RateCategory("general", requestsPerMinute);
     }
 
     /**

@@ -57,10 +57,43 @@ services:
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping"]
       interval: 10s
       timeout: 5s
       retries: 3
+
+  db-backup:
+    image: postgres:16-alpine
+    container_name: cisnebranco-db-backup
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    environment:
+      - POSTGRES_DB=cisnebranco
+      - POSTGRES_USER=${DB_USER}
+      - PGPASSWORD=${DB_PASS}
+      - DB_HOST=db
+    volumes:
+      - ./scripts/backup-db.sh:/usr/local/bin/backup-db.sh:ro
+      - backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "0 6 * * * /usr/local/bin/backup-db.sh >> /proc/1/fd/1 2>> /proc/1/fd/2" > /etc/crontabs/root
+        echo "[$(date)] Backup scheduler started (daily at 06:00 UTC / 03:00 BRT)"
+        crond -f -l 2
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "find /backups -name '.last_success' -mmin -1500 | grep -q ."]
+      interval: 3600s
+      timeout: 10s
+      retries: 3
+      start_period: 90000s
 
   evolution-api:
     image: atendai/evolution-api:v2.2.3
@@ -72,7 +105,7 @@ services:
       - DATABASE_CONNECTION_URI=postgresql://${EVOLUTION_DB_USER:-evolution}:${EVOLUTION_DB_PASS:-change-me-evolution-pass}@db:5432/evolution
       - DATABASE_CONNECTION_CLIENT_NAME=evolution
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://redis:6379
+      - CACHE_REDIS_URI=redis://:${REDIS_PASSWORD}@redis:6379
       - CACHE_REDIS_PREFIX_KEY=evolution
       - CACHE_LOCAL_ENABLED=false
       - SERVER_PORT=8080
@@ -106,3 +139,9 @@ networks:
 volumes:
   pgdata:
   uploads:
+  backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${BACKUP_DIR:-/home/vini/backups/cisnebranco}

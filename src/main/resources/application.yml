@@ -46,6 +46,8 @@ app:
   rate-limit:
     requests-per-minute: ${RATE_LIMIT_RPM:60}
     auth-requests-per-minute: ${RATE_LIMIT_AUTH_RPM:10}
+    upload-requests-per-minute: ${RATE_LIMIT_UPLOAD_RPM:5}
+    report-requests-per-minute: ${RATE_LIMIT_REPORT_RPM:10}
     trusted-proxy-cidrs: ${RATE_LIMIT_TRUSTED_CIDRS:172.16.0.0/12}
   whatsapp:
     enabled: ${WHATSAPP_ENABLED:false}
