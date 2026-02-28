@@ -144,4 +144,4 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${BACKUP_DIR:-/home/vini/backups/cisnebranco}
+      device: ${BACKUP_DIR:?Set BACKUP_DIR in .env}
