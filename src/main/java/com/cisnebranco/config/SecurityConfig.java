@@ -46,6 +46,8 @@ public class SecurityConfig {
     public RateLimitFilter rateLimitFilter(
             @Value("${app.rate-limit.requests-per-minute:60}") int requestsPerMinute,
             @Value("${app.rate-limit.auth-requests-per-minute:10}") int authRequestsPerMinute,
+            @Value("${app.rate-limit.upload-requests-per-minute:5}") int uploadRequestsPerMinute,
+            @Value("${app.rate-limit.report-requests-per-minute:10}") int reportRequestsPerMinute,
             @Value("${app.rate-limit.trusted-proxy-cidrs:172.16.0.0/12}") String trustedProxyCidrsStr,
             ObjectMapper objectMapper) {
         List<String> trustedProxyCidrs = Arrays.stream(trustedProxyCidrsStr.split(","))
@@ -53,6 +55,7 @@ public class SecurityConfig {
                 .filter(s -> !s.isBlank())
                 .toList();
         this.rateLimitFilter = new RateLimitFilter(requestsPerMinute, authRequestsPerMinute,
+                uploadRequestsPerMinute, reportRequestsPerMinute,
                 trustedProxyCidrs, objectMapper);
         return this.rateLimitFilter;
     }

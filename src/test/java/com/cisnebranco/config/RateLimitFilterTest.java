@@ -16,7 +16,7 @@ class RateLimitFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new RateLimitFilter(60, 10, List.of("172.16.0.0/12"), new ObjectMapper());
+        filter = new RateLimitFilter(60, 10, 5, 10, List.of("172.16.0.0/12"), new ObjectMapper());
     }
 
     // --- Constructor: startup CIDR validation ---
@@ -24,7 +24,7 @@ class RateLimitFilterTest {
     @Test
     void constructor_invalidCidrPrefixLength_throwsIllegalArgument() {
         assertThatThrownBy(() ->
-                new RateLimitFilter(60, 10, List.of("172.16.0.0/abc"), new ObjectMapper()))
+                new RateLimitFilter(60, 10, 5, 10, List.of("172.16.0.0/abc"), new ObjectMapper()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("172.16.0.0/abc");
     }
@@ -32,7 +32,7 @@ class RateLimitFilterTest {
     @Test
     void constructor_invalidCidrHost_throwsIllegalArgument() {
         assertThatThrownBy(() ->
-                new RateLimitFilter(60, 10, List.of("not-a-host/24"), new ObjectMapper()))
+                new RateLimitFilter(60, 10, 5, 10, List.of("not-a-host/24"), new ObjectMapper()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("not-a-host/24");
     }
@@ -40,7 +40,7 @@ class RateLimitFilterTest {
     @Test
     void constructor_emptyCidrList_startsWithoutException() {
         // Valid scenario: no proxy (e.g. direct deployment without Nginx)
-        RateLimitFilter f = new RateLimitFilter(60, 10, List.of(), new ObjectMapper());
+        RateLimitFilter f = new RateLimitFilter(60, 10, 5, 10, List.of(), new ObjectMapper());
         assertThat(f).isNotNull();
     }
 
@@ -207,7 +207,7 @@ class RateLimitFilterTest {
     @Test
     void getClientIp_multipleTrustedCidrs_matchesAny() {
         RateLimitFilter multiFilter = new RateLimitFilter(
-                60, 10, List.of("10.0.0.0/8", "192.168.0.0/16"), new ObjectMapper());
+                60, 10, 5, 10, List.of("10.0.0.0/8", "192.168.0.0/16"), new ObjectMapper());
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("192.168.1.50"); // in second CIDR
@@ -218,12 +218,52 @@ class RateLimitFilterTest {
 
     @Test
     void getClientIp_emptyTrustedCidrList_alwaysUsesRemoteAddr() {
-        RateLimitFilter noProxyFilter = new RateLimitFilter(60, 10, List.of(), new ObjectMapper());
+        RateLimitFilter noProxyFilter = new RateLimitFilter(60, 10, 5, 10, List.of(), new ObjectMapper());
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("172.20.0.2");
         request.addHeader("X-Forwarded-For", "203.0.113.42");
 
         assertThat(noProxyFilter.getClientIp(request)).isEqualTo("172.20.0.2");
+    }
+
+    // --- resolveCategory ---
+
+    @Test
+    void resolveCategory_authPath_returnsAuth() {
+        assertThat(filter.resolveCategory("/auth/login").name()).isEqualTo("auth");
+        assertThat(filter.resolveCategory("/auth/refresh").name()).isEqualTo("auth");
+    }
+
+    @Test
+    void resolveCategory_photoUpload_returnsUpload() {
+        assertThat(filter.resolveCategory("/os/123/photos").name()).isEqualTo("upload");
+        assertThat(filter.resolveCategory("/os/456/photos/upload").name()).isEqualTo("upload");
+    }
+
+    @Test
+    void resolveCategory_checklist_returnsUpload() {
+        assertThat(filter.resolveCategory("/os/123/checklist").name()).isEqualTo("upload");
+    }
+
+    @Test
+    void resolveCategory_reports_returnsReport() {
+        assertThat(filter.resolveCategory("/reports").name()).isEqualTo("report");
+        assertThat(filter.resolveCategory("/reports/daily").name()).isEqualTo("report");
+    }
+
+    @Test
+    void resolveCategory_regularEndpoint_returnsGeneral() {
+        assertThat(filter.resolveCategory("/clients").name()).isEqualTo("general");
+        assertThat(filter.resolveCategory("/os").name()).isEqualTo("general");
+        assertThat(filter.resolveCategory("/pets/123").name()).isEqualTo("general");
+    }
+
+    @Test
+    void resolveCategory_limitsMatchConfiguration() {
+        assertThat(filter.resolveCategory("/auth/login").limit()).isEqualTo(10);
+        assertThat(filter.resolveCategory("/os/1/photos").limit()).isEqualTo(5);
+        assertThat(filter.resolveCategory("/reports/daily").limit()).isEqualTo(10);
+        assertThat(filter.resolveCategory("/clients").limit()).isEqualTo(60);
     }
 }
