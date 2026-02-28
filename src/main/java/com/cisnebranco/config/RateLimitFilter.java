@@ -101,7 +101,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Resolves the rate-limit category and limit for a given servlet path.
      * Categories are checked in specificity order: most restrictive patterns first.
      */
-    private record RateCategory(String name, int limit) {}
+    record RateCategory(String name, int limit) {}
 
     RateCategory resolveCategory(String path) {
         if (path.startsWith("/auth/")) {
